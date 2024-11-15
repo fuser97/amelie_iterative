@@ -33,23 +33,25 @@ class AmelieEconomicModel:
             'Co/Ni/Mn Precipitation Reagents': 7.0,
             'Wastewater Treatment Chemicals': 6.0
         }
-        self.cost_fluctuations = {
-            'Reagents': {'Lower': -20, 'Base': 0, 'Upper': 20},
-            'Energy': {'Lower': -15, 'Base': 0, 'Upper': 25},
-            'Labor': {'Lower': -5, 'Base': 0, 'Upper': 10},
-            'Maintenance': {'Lower': -10, 'Base': 0, 'Upper': 15},
-            'Disposal': {'Lower': -10, 'Base': 0, 'Upper': 10},
-            'Microwave Energy': {'Lower': -10, 'Base': 0, 'Upper': 15},
-            'Ascorbic Acid': {'Lower': -15, 'Base': 0, 'Upper': 20},
-            'Wastewater Treatment': {'Lower': -5, 'Base': 0, 'Upper': 10}
+        self.energy_consumption = {
+            'Leaching Reactor': 5,
+            'Press Filter': 3,
+            'Precipitation Reactor': 4,
+            'Solvent Extraction Unit': 6,
+            'Microwave Thermal Treatment': 2.5
         }
+        self.energy_cost = 0.12  # EUR per kWh
         self.black_mass = 10
         self.scenarios = {}
 
     def calculate_totals(self):
         capex_total = sum(self.capex.values())
-        opex_total = sum(self.opex.values())
+        opex_total = sum(self.opex.values()) + self.calculate_total_energy_cost()
         return capex_total, opex_total
+
+    def calculate_total_energy_cost(self):
+        total_kWh = sum(self.energy_consumption.values())
+        return total_kWh * self.energy_cost
 
     def generate_pie_chart(self, data, title):
         fig, ax = plt.subplots(figsize=(12, 10))
@@ -84,29 +86,11 @@ class AmelieEconomicModel:
         df.loc[len(df)] = ['Total', total]
         return df
 
-    def add_scenario(self, name, capex_changes, opex_percentage_changes, fluctuation_type):
-        self.scenarios[name] = {
-            'CapEx': capex_changes,
-            'OpExPercentage': opex_percentage_changes,
-            'FluctuationType': fluctuation_type
-        }
 
-    def apply_scenario(self, name):
-        if name in self.scenarios:
-            scenario = self.scenarios[name]
-            for key, change in scenario['CapEx'].items():
-                self.capex[key] = self.capex.get(key, 0) + change
-            for key, percentage_change in scenario['OpExPercentage'].items():
-                self.opex[key] *= (1 + percentage_change / 100)
-            for cost, fluctuation in self.cost_fluctuations.items():
-                fluctuation_percentage = fluctuation[scenario['FluctuationType']]
-                if cost in self.opex:
-                    self.opex[cost] *= (1 + fluctuation_percentage / 100)
-
-
-# Streamlit App
+# Initialize Model
 model = AmelieEconomicModel()
 
+# Streamlit App
 st.title("Amelie Economic Model Configurator")
 
 # General Assumptions
@@ -126,6 +110,9 @@ model.black_mass = st.number_input("Mass of Black Mass (kg)", min_value=1, value
 
 # Manage CapEx
 st.subheader("CapEx Configuration")
+capex_to_delete = st.multiselect("Select CapEx items to remove:", list(model.capex.keys()))
+for item in capex_to_delete:
+    del model.capex[item]
 for item, cost in model.capex.items():
     model.capex[item] = st.number_input(f"{item} Cost (EUR)", min_value=0, value=cost)
 
@@ -137,9 +124,11 @@ if st.button("Add CapEx Item"):
 
 # Manage OpEx
 st.subheader("OpEx Configuration")
+opex_to_delete = st.multiselect("Select OpEx items to remove:", list(model.opex.keys()))
+for item in opex_to_delete:
+    del model.opex[item]
 for item, cost in model.opex.items():
-    model.opex[item] = st.number_input(f"{item} Cost (EUR/batch)", min_value=float(0.0), value=float(cost))
-
+    model.opex[item] = st.number_input(f"{item} Cost (EUR/batch)", min_value=0.0, value=cost)
 
 new_opex_name = st.text_input("Add a New OpEx Item")
 new_opex_cost = st.number_input("New OpEx Item Cost (EUR/batch)", min_value=0.0)
@@ -147,19 +136,19 @@ if st.button("Add OpEx Item"):
     if new_opex_name and new_opex_cost > 0:
         model.opex[new_opex_name] = new_opex_cost
 
-# Configure Cost Fluctuations
-st.subheader("Scenario Cost Fluctuations")
-for level in model.cost_fluctuations.keys():
-    for cost in model.cost_fluctuations:
-        model.cost_fluctuations[cost][level] = st.number_input(
-            f"{cost} - {level} Fluctuation (%)", value=model.cost_fluctuations[cost][level]
-        )
+# Manage Energy Consumption
+st.subheader("Energy Configuration")
+for equipment, consumption in model.energy_consumption.items():
+    model.energy_consumption[equipment] = st.number_input(
+        f"{equipment} Energy Consumption (kWh)", min_value=0.0, value=consumption
+    )
+model.energy_cost = st.number_input("Energy Cost (EUR/kWh)", min_value=0.0, value=model.energy_cost)
 
 # Display Results
 st.subheader("Results")
 capex_total, opex_total = model.calculate_totals()
 st.write(f"**Total CapEx:** {capex_total} EUR")
-st.write(f"**Total OpEx:** {opex_total} EUR/batch")
+st.write(f"**Total OpEx (including energy):** {opex_total} EUR/batch")
 
 # CapEx Chart
 st.subheader("CapEx Breakdown")
