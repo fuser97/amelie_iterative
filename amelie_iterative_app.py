@@ -128,8 +128,12 @@ for key in list(st.session_state.capex_data.keys()):
     with col1:
         new_name = st.text_input(f"Edit Name: {key}", value=key, key=f"capex_name_{key}")
     with col2:
-        new_cost = st.number_input(f"Edit Cost for {key} (EUR):", value=st.session_state.capex_data[key],
-                                   min_value=0, key=f"capex_cost_{key}")
+        new_cost = st.number_input(
+            f"Edit Cost for {key} (EUR):",
+            value=float(st.session_state.capex_data[key]),  # Ensure value is float
+            min_value=0.0,
+            key=f"capex_cost_{key}"
+        )
     with col3:
         if st.button("Remove", key=f"remove_capex_{key}"):
             capex_to_delete.append(key)
@@ -144,7 +148,7 @@ for item in capex_to_delete:
 # Add new CapEx item
 st.markdown("**Add New CapEx Item**")
 new_capex_name = st.text_input("New CapEx Name:", key="new_capex_name")
-new_capex_cost = st.number_input("New CapEx Cost (EUR):", min_value=0, key="new_capex_cost")
+new_capex_cost = st.number_input("New CapEx Cost (EUR):", min_value=0.0, key="new_capex_cost")
 if st.button("Add CapEx", key="add_capex"):
     if new_capex_name and new_capex_name not in st.session_state.capex_data:
         st.session_state.capex_data[new_capex_name] = new_capex_cost
@@ -168,8 +172,12 @@ for key in list(st.session_state.opex_data.keys()):
     with col1:
         new_name = st.text_input(f"Edit Name: {key}", value=key, key=f"opex_name_{key}")
     with col2:
-        new_cost = st.number_input(f"Edit Cost for {key} (EUR/batch):", value=st.session_state.opex_data[key],
-                                   min_value=0.0, key=f"opex_cost_{key}")
+        new_cost = st.number_input(
+            f"Edit Cost for {key} (EUR/batch):",
+            value=float(st.session_state.opex_data[key]),  # Ensure value is float
+            min_value=0.0,
+            key=f"opex_cost_{key}"
+        )
     with col3:
         if st.button("Remove", key=f"remove_opex_{key}"):
             opex_to_delete.append(key)
@@ -193,6 +201,7 @@ if st.button("Add OpEx", key="add_opex"):
         st.error(f"The OpEx item '{new_opex_name}' already exists!")
 
 model.opex = st.session_state.opex_data
+
 
 
 
