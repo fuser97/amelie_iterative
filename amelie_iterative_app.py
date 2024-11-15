@@ -117,63 +117,83 @@ model.black_mass = st.number_input("Mass of Black Mass (kg)", min_value=1, value
 # Manage CapEx
 st.subheader("CapEx Configuration")
 
-# Remove selected CapEx items
-capex_to_delete = st.multiselect("Select CapEx items to remove:", list(model.capex.keys()), key="capex_to_delete")
+# Dynamic CapEx input form
+if "capex_data" not in st.session_state:
+    st.session_state.capex_data = model.capex.copy()
+
+# Display existing CapEx items with editable inputs
+capex_to_delete = []
+for key in list(st.session_state.capex_data.keys()):
+    col1, col2, col3 = st.columns([3, 2, 1])
+    with col1:
+        new_name = st.text_input(f"Edit Name: {key}", value=key, key=f"capex_name_{key}")
+    with col2:
+        new_cost = st.number_input(f"Edit Cost for {key} (EUR):", value=st.session_state.capex_data[key],
+                                   min_value=0, key=f"capex_cost_{key}")
+    with col3:
+        if st.button("Remove", key=f"remove_capex_{key}"):
+            capex_to_delete.append(key)
+    if new_name != key:
+        st.session_state.capex_data[new_name] = st.session_state.capex_data.pop(key)
+    st.session_state.capex_data[new_name] = new_cost
+
+# Remove items marked for deletion
 for item in capex_to_delete:
-    if item in model.capex:
-        del model.capex[item]
-        st.success(f"Removed CapEx item: {item}")
+    del st.session_state.capex_data[item]
 
-# Update existing CapEx items
-updated_capex = {}
-for idx, (item, cost) in enumerate(model.capex.items()):
-    updated_capex[item] = st.number_input(
-        f"{item} Cost (EUR) (ID: {idx})",  # Unique label
-        min_value=0,
-        value=int(cost),  # Ensure integer input for CapEx
-        key=f"capex_{idx}"  # Unique Streamlit key
-    )
-
-# Add a new CapEx item
-new_capex_name = st.text_input("New CapEx Item Name:", key="new_capex_name")
-new_capex_cost = st.number_input("New CapEx Item Cost (EUR):", min_value=0, key="new_capex_cost")
-if st.button("Add CapEx Item", key="add_capex"):
-    if new_capex_name and new_capex_cost > 0:
-        updated_capex[new_capex_name] = new_capex_cost
+# Add new CapEx item
+st.markdown("**Add New CapEx Item**")
+new_capex_name = st.text_input("New CapEx Name:", key="new_capex_name")
+new_capex_cost = st.number_input("New CapEx Cost (EUR):", min_value=0, key="new_capex_cost")
+if st.button("Add CapEx", key="add_capex"):
+    if new_capex_name and new_capex_name not in st.session_state.capex_data:
+        st.session_state.capex_data[new_capex_name] = new_capex_cost
         st.success(f"Added new CapEx item: {new_capex_name}")
+    elif new_capex_name in st.session_state.capex_data:
+        st.error(f"The CapEx item '{new_capex_name}' already exists!")
 
-# Save the updated CapEx configuration
-model.capex = updated_capex
+model.capex = st.session_state.capex_data
 
 # Manage OpEx
 st.subheader("OpEx Configuration")
 
-# Remove selected OpEx items
-opex_to_delete = st.multiselect("Select OpEx items to remove:", list(model.opex.keys()))
+# Dynamic OpEx input form
+if "opex_data" not in st.session_state:
+    st.session_state.opex_data = model.opex.copy()
+
+# Display existing OpEx items with editable inputs
+opex_to_delete = []
+for key in list(st.session_state.opex_data.keys()):
+    col1, col2, col3 = st.columns([3, 2, 1])
+    with col1:
+        new_name = st.text_input(f"Edit Name: {key}", value=key, key=f"opex_name_{key}")
+    with col2:
+        new_cost = st.number_input(f"Edit Cost for {key} (EUR/batch):", value=st.session_state.opex_data[key],
+                                   min_value=0.0, key=f"opex_cost_{key}")
+    with col3:
+        if st.button("Remove", key=f"remove_opex_{key}"):
+            opex_to_delete.append(key)
+    if new_name != key:
+        st.session_state.opex_data[new_name] = st.session_state.opex_data.pop(key)
+    st.session_state.opex_data[new_name] = new_cost
+
+# Remove items marked for deletion
 for item in opex_to_delete:
-    if item in model.opex:
-        del model.opex[item]
+    del st.session_state.opex_data[item]
 
-# Update or add new OpEx items
-updated_opex = {}
-for idx, (item, cost) in enumerate(model.opex.items()):
-    updated_opex[item] = st.number_input(
-        f"{item} Cost (EUR/batch) (ID: {idx})",  # Unique identifier with index
-        min_value=0.0,
-        value=float(cost),
-        key=f"opex_{idx}"  # Unique Streamlit key for each input
-    )
-
-# Add a new OpEx item
-new_opex_name = st.text_input("New OpEx Item Name:", key="new_opex_name")
-new_opex_cost = st.number_input("New OpEx Item Cost (EUR/batch):", min_value=0.0, key="new_opex_cost")
-if st.button("Add OpEx Item", key="add_opex"):
-    if new_opex_name and new_opex_cost > 0:
-        updated_opex[new_opex_name] = new_opex_cost
+# Add new OpEx item
+st.markdown("**Add New OpEx Item**")
+new_opex_name = st.text_input("New OpEx Name:", key="new_opex_name")
+new_opex_cost = st.number_input("New OpEx Cost (EUR/batch):", min_value=0.0, key="new_opex_cost")
+if st.button("Add OpEx", key="add_opex"):
+    if new_opex_name and new_opex_name not in st.session_state.opex_data:
+        st.session_state.opex_data[new_opex_name] = new_opex_cost
         st.success(f"Added new OpEx item: {new_opex_name}")
+    elif new_opex_name in st.session_state.opex_data:
+        st.error(f"The OpEx item '{new_opex_name}' already exists!")
 
-# Save the updated OpEx configuration
-model.opex = updated_opex
+model.opex = st.session_state.opex_data
+
 
 
 # Manage Energy Consumption
