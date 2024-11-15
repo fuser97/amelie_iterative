@@ -1,5 +1,7 @@
-import streamlit as st
+import matplotlib
+matplotlib.use('Agg')  # Required for Streamlit compatibility
 import matplotlib.pyplot as plt
+import streamlit as st
 import pandas as pd
 import io
 
