@@ -116,17 +116,34 @@ model.black_mass = st.number_input("Mass of Black Mass (kg)", min_value=1, value
 
 # Manage CapEx
 st.subheader("CapEx Configuration")
-capex_to_delete = st.multiselect("Select CapEx items to remove:", list(model.capex.keys()))
-for item in capex_to_delete:
-    del model.capex[item]
-for item, cost in model.capex.items():
-    model.capex[item] = st.number_input(f"{item} Cost (EUR)", min_value=0, value=cost)
 
-new_capex_name = st.text_input("Add a New CapEx Item")
-new_capex_cost = st.number_input("New CapEx Item Cost (EUR)", min_value=0)
-if st.button("Add CapEx Item"):
+# Remove selected CapEx items
+capex_to_delete = st.multiselect("Select CapEx items to remove:", list(model.capex.keys()), key="capex_to_delete")
+for item in capex_to_delete:
+    if item in model.capex:
+        del model.capex[item]
+        st.success(f"Removed CapEx item: {item}")
+
+# Update existing CapEx items
+updated_capex = {}
+for idx, (item, cost) in enumerate(model.capex.items()):
+    updated_capex[item] = st.number_input(
+        f"{item} Cost (EUR) (ID: {idx})",  # Unique label
+        min_value=0,
+        value=int(cost),  # Ensure integer input for CapEx
+        key=f"capex_{idx}"  # Unique Streamlit key
+    )
+
+# Add a new CapEx item
+new_capex_name = st.text_input("New CapEx Item Name:", key="new_capex_name")
+new_capex_cost = st.number_input("New CapEx Item Cost (EUR):", min_value=0, key="new_capex_cost")
+if st.button("Add CapEx Item", key="add_capex"):
     if new_capex_name and new_capex_cost > 0:
-        model.capex[new_capex_name] = new_capex_cost
+        updated_capex[new_capex_name] = new_capex_cost
+        st.success(f"Added new CapEx item: {new_capex_name}")
+
+# Save the updated CapEx configuration
+model.capex = updated_capex
 
 # Manage OpEx
 st.subheader("OpEx Configuration")
@@ -153,16 +170,11 @@ new_opex_cost = st.number_input("New OpEx Item Cost (EUR/batch):", min_value=0.0
 if st.button("Add OpEx Item", key="add_opex"):
     if new_opex_name and new_opex_cost > 0:
         updated_opex[new_opex_name] = new_opex_cost
+        st.success(f"Added new OpEx item: {new_opex_name}")
 
 # Save the updated OpEx configuration
 model.opex = updated_opex
 
-
-new_opex_name = st.text_input("Add a New OpEx Item")
-new_opex_cost = st.number_input("New OpEx Item Cost (EUR/batch)", min_value=0.0)
-if st.button("Add OpEx Item"):
-    if new_opex_name and new_opex_cost > 0:
-        model.opex[new_opex_name] = new_opex_cost
 
 # Manage Energy Consumption
 st.subheader("Energy Consumption Configuration")
