@@ -133,13 +133,18 @@ for item in opex_to_delete:
 
 # Update or add new OpEx items
 updated_opex = {}
-for item, cost in model.opex.items():
-    updated_opex[item] = st.number_input(f"{item} Cost (EUR/batch)", min_value=0.0, value=float(cost))
+for idx, (item, cost) in enumerate(model.opex.items()):
+    updated_opex[item] = st.number_input(
+        f"{item} Cost (EUR/batch) (ID: {idx})",  # Unique identifier with index
+        min_value=0.0,
+        value=float(cost),
+        key=f"opex_{idx}"  # Unique Streamlit key for each input
+    )
 
 # Add a new OpEx item
-new_opex_name = st.text_input("Add a New OpEx Item")
-new_opex_cost = st.number_input("New OpEx Item Cost (EUR/batch)", min_value=0.0)
-if st.button("Add OpEx Item"):
+new_opex_name = st.text_input("New OpEx Item Name:", key="new_opex_name")
+new_opex_cost = st.number_input("New OpEx Item Cost (EUR/batch):", min_value=0.0, key="new_opex_cost")
+if st.button("Add OpEx Item", key="add_opex"):
     if new_opex_name and new_opex_cost > 0:
         updated_opex[new_opex_name] = new_opex_cost
 
