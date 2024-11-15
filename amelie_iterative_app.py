@@ -159,12 +159,35 @@ if st.button("Add OpEx Item"):
         model.opex[new_opex_name] = new_opex_cost
 
 # Manage Energy Consumption
-st.subheader("Energy Configuration")
-for equipment, consumption in model.energy_consumption.items():
-    model.energy_consumption[equipment] = st.number_input(
-        f"{equipment} Energy Consumption (kWh)", min_value=0.0, value=consumption
+st.subheader("Energy Consumption Configuration")
+
+# Dynamically update energy consumption values
+updated_energy_consumption = {}
+for idx, (equipment, consumption) in enumerate(model.energy_consumption.items()):
+    updated_energy_consumption[equipment] = st.number_input(
+        f"{equipment} Energy Consumption (kWh) (ID: {idx})",  # Unique label
+        min_value=0.0,  # Ensure the type is float
+        value=float(consumption),  # Ensure the initial value is float
+        key=f"energy_{idx}"  # Unique Streamlit key
     )
-model.energy_cost = st.number_input("Energy Cost (EUR/kWh)", min_value=0.0, value=model.energy_cost)
+
+# Add a new equipment for energy consumption
+new_equipment_name = st.text_input("New Equipment Name for Energy Consumption:", key="new_energy_name")
+new_energy_consumption = st.number_input(
+    "New Equipment Energy Consumption (kWh):",
+    min_value=0.0,  # Ensure float
+    key="new_energy_consumption"
+)
+if st.button("Add Energy Equipment", key="add_energy"):
+    if new_equipment_name and new_energy_consumption > 0:
+        updated_energy_consumption[new_equipment_name] = new_energy_consumption
+
+# Save the updated energy consumption configuration
+model.energy_consumption = updated_energy_consumption
+
+# Update energy cost
+model.energy_cost = st.number_input("Energy Cost (EUR/kWh):", min_value=0.0, value=model.energy_cost, key="energy_cost")
+
 
 # Display Results
 st.subheader("Results")
