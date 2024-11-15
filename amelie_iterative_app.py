@@ -138,7 +138,8 @@ if st.button("Add CapEx Item"):
 # Manage OpEx
 st.subheader("OpEx Configuration")
 for item, cost in model.opex.items():
-    model.opex[item] = st.number_input(f"{item} Cost (EUR/batch)", min_value=0.0, value=cost)
+    model.opex[item] = st.number_input(f"{item} Cost (EUR/batch)", min_value=float(0.0), value=float(cost))
+
 
 new_opex_name = st.text_input("Add a New OpEx Item")
 new_opex_cost = st.number_input("New OpEx Item Cost (EUR/batch)", min_value=0.0)
