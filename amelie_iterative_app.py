@@ -103,6 +103,12 @@ st.markdown("""
 - Labor includes one operator per batch.
 - Maintenance and disposal are estimated.
 """)
+# Add a section for the recycling process flowchart
+st.subheader("Recycling Process Flowchart")
+
+# Display the flowchart image
+flowchart_path = "processo.png"  # Adjust the path if the image is in a subfolder
+st.image(flowchart_path, caption="Recycling Process Flowchart (UNIBS)", use_column_width=True)
 
 # Configure Black Mass
 st.subheader("Configure Black Mass")
