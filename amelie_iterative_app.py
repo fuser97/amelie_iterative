@@ -124,11 +124,28 @@ if st.button("Add CapEx Item"):
 
 # Manage OpEx
 st.subheader("OpEx Configuration")
+
+# Remove selected OpEx items
 opex_to_delete = st.multiselect("Select OpEx items to remove:", list(model.opex.keys()))
 for item in opex_to_delete:
-    del model.opex[item]
+    if item in model.opex:
+        del model.opex[item]
+
+# Update or add new OpEx items
+updated_opex = {}
 for item, cost in model.opex.items():
-    model.opex[item] = st.number_input(f"{item} Cost (EUR/batch)", min_value=0.0, value=cost)
+    updated_opex[item] = st.number_input(f"{item} Cost (EUR/batch)", min_value=0.0, value=float(cost))
+
+# Add a new OpEx item
+new_opex_name = st.text_input("Add a New OpEx Item")
+new_opex_cost = st.number_input("New OpEx Item Cost (EUR/batch)", min_value=0.0)
+if st.button("Add OpEx Item"):
+    if new_opex_name and new_opex_cost > 0:
+        updated_opex[new_opex_name] = new_opex_cost
+
+# Save the updated OpEx configuration
+model.opex = updated_opex
+
 
 new_opex_name = st.text_input("Add a New OpEx Item")
 new_opex_cost = st.number_input("New OpEx Item Cost (EUR/batch)", min_value=0.0)
