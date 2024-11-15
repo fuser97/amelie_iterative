@@ -208,32 +208,51 @@ model.opex = st.session_state.opex_data
 # Manage Energy Consumption
 st.subheader("Energy Consumption Configuration")
 
-# Dynamically update energy consumption values
-updated_energy_consumption = {}
-for idx, (equipment, consumption) in enumerate(model.energy_consumption.items()):
-    updated_energy_consumption[equipment] = st.number_input(
-        f"{equipment} Energy Consumption (kWh) (ID: {idx})",  # Unique label
-        min_value=0.0,  # Ensure the type is float
-        value=float(consumption),  # Ensure the initial value is float
-        key=f"energy_{idx}"  # Unique Streamlit key
-    )
+# Dynamic Energy Consumption input form
+if "energy_data" not in st.session_state:
+    st.session_state.energy_data = model.energy_consumption.copy()
 
-# Add a new equipment for energy consumption
-new_equipment_name = st.text_input("New Equipment Name for Energy Consumption:", key="new_energy_name")
+# Display existing energy consumption items with editable inputs
+energy_to_delete = []
+for key in list(st.session_state.energy_data.keys()):
+    col1, col2, col3 = st.columns([3, 2, 1])
+    with col1:
+        new_name = st.text_input(f"Edit Name: {key}", value=key, key=f"energy_name_{key}")
+    with col2:
+        new_consumption = st.number_input(
+            f"Edit Consumption for {key} (kWh):",
+            value=float(st.session_state.energy_data[key]),  # Ensure value is float
+            min_value=0.0,
+            key=f"energy_consumption_{key}"
+        )
+    with col3:
+        if st.button("Remove", key=f"remove_energy_{key}"):
+            energy_to_delete.append(key)
+    if new_name != key:
+        st.session_state.energy_data[new_name] = st.session_state.energy_data.pop(key)
+    st.session_state.energy_data[new_name] = new_consumption
+
+# Remove items marked for deletion
+for item in energy_to_delete:
+    del st.session_state.energy_data[item]
+
+# Add new energy consumption item
+st.markdown("**Add New Energy Equipment**")
+new_energy_name = st.text_input("New Equipment Name for Energy Consumption:", key="new_energy_name")
 new_energy_consumption = st.number_input(
     "New Equipment Energy Consumption (kWh):",
-    min_value=0.0,  # Ensure float
+    min_value=0.0,
     key="new_energy_consumption"
 )
 if st.button("Add Energy Equipment", key="add_energy"):
-    if new_equipment_name and new_energy_consumption > 0:
-        updated_energy_consumption[new_equipment_name] = new_energy_consumption
+    if new_energy_name and new_energy_name not in st.session_state.energy_data:
+        st.session_state.energy_data[new_energy_name] = new_energy_consumption
+        st.success(f"Added new energy equipment: {new_energy_name}")
+    elif new_energy_name in st.session_state.energy_data:
+        st.error(f"The energy equipment '{new_energy_name}' already exists!")
 
 # Save the updated energy consumption configuration
-model.energy_consumption = updated_energy_consumption
-
-# Update energy cost
-model.energy_cost = st.number_input("Energy Cost (EUR/kWh):", min_value=0.0, value=model.energy_cost, key="energy_cost")
+model.energy_consumption = st.session_state.energy_data
 
 
 # Display Results
