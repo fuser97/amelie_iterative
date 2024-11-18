@@ -381,8 +381,8 @@ st.table(result_df)
 def initialize_sl_tool():
     if "phases" not in st.session_state:
         st.session_state.phases = {
-            "Leaching in Water": {"liquids": [{"type": "Water", "volume": 20.0}]},
-            "Leaching in Acid": {"liquids": [{"type": "Malic Acid", "volume": 5.0}, {"type": "Water", "volume": 2.0}]}
+            "Leaching in Water": {"liquids": [{"type": "Water", "volume": 20.0}], "mass": 5.0},
+            "Leaching in Acid": {"liquids": [{"type": "Malic Acid", "volume": 5.0}, {"type": "Water", "volume": 2.0}], "mass": 5.0}
         }
     if "sl_feedback_thresholds" not in st.session_state:
         st.session_state.sl_feedback_thresholds = {"low": 0.1, "high": 0.6}
@@ -390,11 +390,11 @@ def initialize_sl_tool():
 # Initialize session state
 initialize_sl_tool()
 
-st.title("Solid/Liquid Ratio Management with Multiple Liquids per Phase")
+st.title("Solid/Liquid Ratio Management with Phase-Specific Masses and Multiple Liquids")
 
 # Input: Total Black Mass
 st.sidebar.header("General Inputs")
-black_mass = st.sidebar.number_input("Total Black Mass (kg):", min_value=0.1, value=10.0, step=0.1)
+total_black_mass = st.sidebar.number_input("Total Black Mass (kg):", min_value=0.1, value=10.0, step=0.1)
 
 # Dynamic Feedback Thresholds
 st.sidebar.header("Set Feedback Thresholds")
@@ -419,6 +419,11 @@ for phase_name, phase_data in phases.items():
     st.subheader(f"Phase: {phase_name}")
     liquids = phase_data.get("liquids", [])
     updated_liquids = []
+
+    # Phase-specific mass input
+    phase_mass = st.number_input(
+        f"Mass for {phase_name} (kg):", min_value=0.0, max_value=total_black_mass, value=phase_data.get("mass", 0.0), step=0.1, key=f"mass_{phase_name}"
+    )
 
     for idx, liquid in enumerate(liquids):
         col1, col2, col3 = st.columns([2, 1, 1])
@@ -453,7 +458,7 @@ for phase_name, phase_data in phases.items():
             else:
                 st.error("Please provide a valid liquid type and volume.")
 
-    updated_phases[phase_name] = {"liquids": updated_liquids}
+    updated_phases[phase_name] = {"liquids": updated_liquids, "mass": phase_mass}
 
 # Add a new phase
 st.write("### Add New Phase")
@@ -463,7 +468,7 @@ with col1:
 with col2:
     if st.button("Add Phase", key="add_phase"):
         if new_phase_name and new_phase_name not in updated_phases:
-            updated_phases[new_phase_name] = {"liquids": []}
+            updated_phases[new_phase_name] = {"liquids": [], "mass": 0.0}
             st.success(f"Phase '{new_phase_name}' added successfully!")
         elif new_phase_name in updated_phases:
             st.error(f"Phase '{new_phase_name}' already exists. Please choose a different name.")
@@ -477,21 +482,25 @@ st.session_state.phases = updated_phases
 st.header("Solid/Liquid Ratios for Each Phase and Liquid Type")
 sl_results = []
 for phase_name, phase_data in st.session_state.phases.items():
+    phase_mass = phase_data["mass"]
     phase_liquids = phase_data["liquids"]
     total_liquid_volume = sum(liquid["volume"] for liquid in phase_liquids)
+    
     for liquid in phase_liquids:
-        liquid_ratio = black_mass / liquid["volume"] if liquid["volume"] > 0 else 0
+        liquid_ratio = phase_mass / liquid["volume"] if liquid["volume"] > 0 else 0
         sl_results.append({
             "Phase": phase_name,
             "Liquid Type": liquid["type"],
+            "Phase Mass (kg)": phase_mass,
             "Liquid Volume (L)": liquid["volume"],
             "S/L Ratio (Per Liquid)": liquid_ratio
         })
 
-    overall_sl_ratio = black_mass / total_liquid_volume if total_liquid_volume > 0 else 0
+    overall_sl_ratio = phase_mass / total_liquid_volume if total_liquid_volume > 0 else 0
     sl_results.append({
         "Phase": phase_name,
         "Liquid Type": "Overall",
+        "Phase Mass (kg)": phase_mass,
         "Liquid Volume (L)": total_liquid_volume,
         "S/L Ratio (Per Liquid)": overall_sl_ratio
     })
@@ -513,6 +522,7 @@ for result in sl_results:
             st.warning(f"S/L ratio for {phase} (overall) is too high. Consider increasing the liquid volume.")
         else:
             st.success(f"S/L ratio for {phase} (overall) is within the optimal range.")
+
 
 
 
