@@ -377,3 +377,116 @@ result_df = pd.DataFrame({
 st.table(result_df)
 
 
+import streamlit as st
+import pandas as pd
+import numpy as np
+
+# Initialize default parameters
+def initialize_sl_tool():
+    if "composition" not in st.session_state:
+        st.session_state.composition = {
+            'Li': {'percentage': 7.0, 'recovered_mass': 0.0},
+            'Co': {'percentage': 15.0, 'recovered_mass': 0.0},
+            'Ni': {'percentage': 10.0, 'recovered_mass': 0.0},
+            'Mn': {'percentage': 8.0, 'recovered_mass': 0.0}
+        }
+    if "sl_ratios" not in st.session_state:
+        st.session_state.sl_ratios = {}
+
+# Initialize session state
+initialize_sl_tool()
+
+st.title("Solid/Liquid Ratio and Recovery Efficiency Tool")
+
+# Input: Total Black Mass and Liquid Volume
+st.sidebar.header("Process Inputs")
+black_mass = st.sidebar.number_input("Total Black Mass (kg):", min_value=0.1, value=10.0, step=0.1)
+liquid_volume = st.sidebar.number_input("Liquid Volume (L):", min_value=0.1, value=25.0, step=0.1)
+
+# Compute Solid/Liquid Ratio
+sl_ratio = black_mass / liquid_volume if liquid_volume > 0 else 0
+st.sidebar.write(f"**Solid/Liquid Ratio (S/L):** {sl_ratio:.2f}")
+
+# Validate S/L Ratio
+if sl_ratio < 0.1:
+    st.sidebar.warning("S/L ratio is too low; consider reducing the liquid volume.")
+elif sl_ratio > 0.6:
+    st.sidebar.warning("S/L ratio is too high; consider increasing the liquid volume.")
+else:
+    st.sidebar.success("S/L ratio is within optimal range.")
+
+# Dynamic Material Composition
+st.header("Material Composition in Black Mass")
+composition = st.session_state.composition
+updated_composition = {}
+
+total_percentage = 0
+for material, values in composition.items():
+    col1, col2, col3 = st.columns([2, 1, 1])
+    with col1:
+        new_material = st.text_input(f"Material Name ({material}):", value=material, key=f"material_{material}")
+    with col2:
+        new_percentage = st.number_input(
+            f"{material} Percentage in BM (%):",
+            min_value=0.0,
+            max_value=100.0,
+            value=values['percentage'],
+            key=f"percentage_{material}"
+        )
+    with col3:
+        recovered_mass = st.number_input(
+            f"Recovered Mass ({material}, kg):",
+            min_value=0.0,
+            value=values['recovered_mass'],
+            step=0.1,
+            key=f"recovered_mass_{material}"
+        )
+
+    updated_composition[new_material] = {
+        'percentage': new_percentage,
+        'recovered_mass': recovered_mass
+    }
+    total_percentage += new_percentage
+
+# Save updated composition to session state
+st.session_state.composition = updated_composition
+
+# Display warning for composition percentages
+if total_percentage > 100:
+    st.warning(f"Total composition exceeds 100% (currently {total_percentage:.2f}%). Adjust values.")
+elif total_percentage < 100:
+    st.info(f"Total composition is below 100% (currently {total_percentage:.2f}%).")
+
+# Calculate Recovery Efficiency
+st.header("Recovery Efficiency")
+efficiencies = {}
+total_recovered_mass = 0
+
+for material, values in st.session_state.composition.items():
+    initial_mass = black_mass * (values['percentage'] / 100)
+    recovered_mass = values['recovered_mass']
+    efficiency = (recovered_mass / initial_mass) * 100 if initial_mass > 0 else 0
+    efficiencies[material] = {
+        'initial_mass': initial_mass,
+        'recovered_mass': recovered_mass,
+        'efficiency': efficiency
+    }
+    total_recovered_mass += recovered_mass
+
+# Compute Overall Efficiency
+overall_efficiency = (total_recovered_mass / black_mass) * 100
+
+# Display Results
+st.write(f"**Overall Process Efficiency:** {overall_efficiency:.2f}%")
+result_df = pd.DataFrame.from_dict(efficiencies, orient='index')
+result_df.reset_index(inplace=True)
+result_df.columns = ["Material", "Initial Mass in BM (kg)", "Recovered Mass (kg)", "Efficiency (%)"]
+
+st.write("**Detailed Efficiency Results:**")
+st.table(result_df)
+
+# Sensitivity Analysis Placeholder
+st.header("Sensitivity Analysis")
+st.markdown("Future implementation: run scenarios by varying S/L ratio, compositions, and recovery efficiencies.")
+
+
