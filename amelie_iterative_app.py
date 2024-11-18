@@ -287,8 +287,8 @@ st.subheader("Technical KPI: Efficiency")
 if "composition" not in st.session_state:
     st.session_state.composition = {'Li': 7.0, 'Co': 15.0, 'Ni': 10.0, 'Mn': 8.0}  # Default percentages
 
-# Display and allow the user to edit default materials
-st.markdown("### Material Composition")
+# Display and allow the user to edit percentages of materials in BM
+st.markdown("### Material Composition in Black Mass")
 total_percentage = 0  # Track the sum of percentages
 updated_composition = {}
 
@@ -300,7 +300,7 @@ for material, percentage in list(st.session_state.composition.items()):
     with col2:
         # Allow editing of material percentages
         new_percentage = st.number_input(
-            f"Percentage of {material} (%)",
+            f"Percentage of {material} in BM (%)",
             min_value=0.0,
             max_value=100.0,
             value=percentage,
@@ -336,22 +336,44 @@ elif total_percentage < 100:
     st.info(f"Total material composition is below 100% (currently {total_percentage:.2f}%).")
 
 # Efficiency Calculation
-st.markdown("### Process Efficiency")
-overall_efficiency = st.slider("Set Overall Process Efficiency (%)", min_value=0, max_value=100, value=85) / 100
+st.markdown("### Recovered Mass and Efficiency Calculation")
 
-# Calculate total recovered mass
+# Inputs for recovered mass
+recovered_masses = {}
+for material in st.session_state.composition:
+    recovered_mass = st.number_input(
+        f"Recovered Mass of {material} (kg):",
+        min_value=0.0,
+        max_value=100.0,
+        step=0.1,
+        key=f"recovered_mass_{material}"
+    )
+    recovered_masses[material] = recovered_mass
+
+# Compute efficiency per material
+efficiencies = {}
 total_black_mass = model.black_mass
-total_recovered_mass = total_black_mass * overall_efficiency
+total_recovered_mass = 0  # Track total recovered mass
 
-# Calculate recovered mass per material based on user-defined composition
-recovered_masses = {
-    material: total_recovered_mass * (percentage / 100)
-    for material, percentage in st.session_state.composition.items()
-}
+for material, percentage in st.session_state.composition.items():
+    initial_mass = total_black_mass * (percentage / 100)
+    recovered_mass = recovered_masses.get(material, 0.0)
+    efficiency = (recovered_mass / initial_mass) * 100 if initial_mass > 0 else 0.0
+    efficiencies[material] = efficiency
+    total_recovered_mass += recovered_mass
+
+# Compute overall efficiency
+overall_efficiency = (total_recovered_mass / total_black_mass) * 100
 
 # Display Results
-st.write(f"**Overall Process Efficiency:** {overall_efficiency * 100:.2f}%")
-st.write(f"**Total Recovered Mass (kg):** {total_recovered_mass:.2f}")
-st.write("**Recovered Mass by Material (kg):**")
-st.table(pd.DataFrame(recovered_masses.items(), columns=["Material", "Recovered Mass (kg)"]))
+st.write(f"**Overall Process Efficiency:** {overall_efficiency:.2f}%")
+st.write("**Efficiency and Recovered Mass per Material:**")
+result_df = pd.DataFrame({
+    "Material": list(st.session_state.composition.keys()),
+    "Initial Mass in BM (kg)": [total_black_mass * (p / 100) for p in st.session_state.composition.values()],
+    "Recovered Mass (kg)": [recovered_masses.get(m, 0.0) for m in st.session_state.composition.keys()],
+    "Efficiency (%)": [efficiencies.get(m, 0.0) for m in st.session_state.composition.keys()]
+})
+st.table(result_df)
+
 
