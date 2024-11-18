@@ -375,9 +375,7 @@ result_df = pd.DataFrame({
     "Efficiency (%)": [efficiencies.get(m, 0.0) for m in st.session_state.composition.keys()]
 })
 st.table(result_df)
-import streamlit as st
-import pandas as pd
-import numpy as np
+
 
 # Initialize default parameters
 def initialize_sl_tool():
@@ -419,20 +417,7 @@ composition = st.session_state.composition
 updated_composition = {}
 
 total_percentage = 0
-# Reinitialize composition if corrupted
-if not isinstance(st.session_state.composition, dict):
-    st.session_state.composition = {
-        'Li': {'percentage': 7.0, 'recovered_mass': 0.0},
-        'Co': {'percentage': 15.0, 'recovered_mass': 0.0},
-        'Ni': {'percentage': 10.0, 'recovered_mass': 0.0},
-        'Mn': {'percentage': 8.0, 'recovered_mass': 0.0}
-    }
-
-composition = st.session_state.composition
-updated_composition = {}
-
-# Iterate through materials
-for material, values in list(composition.items()):
+for idx, (material, values) in enumerate(list(composition.items())):
     # Ensure values is a dictionary
     if isinstance(values, float):
         values = {'percentage': values, 'recovered_mass': 0.0}
@@ -445,14 +430,18 @@ for material, values in list(composition.items()):
 
     col1, col2, col3 = st.columns([2, 1, 1])
     with col1:
-        new_material = st.text_input(f"Material Name ({material}):", value=material, key=f"material_{material}")
+        new_material = st.text_input(
+            f"Material Name ({material}):",
+            value=material,
+            key=f"material_{idx}_{material}"  # Unique key for material name
+        )
     with col2:
         new_percentage = st.number_input(
             f"{material} Percentage in BM (%):",
             min_value=0.0,
             max_value=100.0,
             value=values['percentage'],
-            key=f"percentage_{material}"
+            key=f"percentage_{idx}_{material}"  # Unique key for percentage
         )
     with col3:
         recovered_mass = st.number_input(
@@ -460,7 +449,7 @@ for material, values in list(composition.items()):
             min_value=0.0,
             value=values['recovered_mass'],
             step=0.1,
-            key=f"recovered_mass_{material}"
+            key=f"recovered_mass_{idx}_{material}"  # Unique key for recovered mass
         )
 
     if new_material != material:
@@ -470,10 +459,7 @@ for material, values in list(composition.items()):
         'percentage': new_percentage,
         'recovered_mass': recovered_mass
     }
-
-# Save updated composition to session state
-st.session_state.composition = updated_composition
-
+    total_percentage += new_percentage
 
 # Save updated composition to session state
 st.session_state.composition = updated_composition
@@ -516,9 +502,5 @@ st.table(result_df)
 st.header("Sensitivity Analysis")
 st.markdown("Future implementation: run scenarios by varying S/L ratio, compositions, and recovery efficiencies.")
 
-
-# Sensitivity Analysis Placeholder
-st.header("Sensitivity Analysis")
-st.markdown("Future implementation: run scenarios by varying S/L ratio, compositions, and recovery efficiencies.")
 
 
