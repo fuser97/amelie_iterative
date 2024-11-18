@@ -381,8 +381,8 @@ st.table(result_df)
 def initialize_sl_tool():
     if "phases" not in st.session_state:
         st.session_state.phases = {
-            "Leaching in Water": {"liquid_type": "Water", "liquid_volume": 20.0},
-            "Leaching in Acid": {"liquid_type": "Malic Acid", "liquid_volume": 5.0}
+            "Leaching in Water": {"liquids": [{"type": "Water", "volume": 20.0}]},
+            "Leaching in Acid": {"liquids": [{"type": "Malic Acid", "volume": 5.0}, {"type": "Water", "volume": 2.0}]}
         }
     if "sl_feedback_thresholds" not in st.session_state:
         st.session_state.sl_feedback_thresholds = {"low": 0.1, "high": 0.6}
@@ -390,7 +390,7 @@ def initialize_sl_tool():
 # Initialize session state
 initialize_sl_tool()
 
-st.title("Solid/Liquid Ratio Management for Multiple Phases")
+st.title("Solid/Liquid Ratio Management with Multiple Liquids per Phase")
 
 # Input: Total Black Mass
 st.sidebar.header("General Inputs")
@@ -415,45 +415,55 @@ phases = st.session_state.phases
 updated_phases = {}
 
 # Display existing phases
-st.write("### Existing Phases")
 for phase_name, phase_data in phases.items():
-    col1, col2, col3, col4 = st.columns([2, 1, 1, 1])
+    st.subheader(f"Phase: {phase_name}")
+    liquids = phase_data.get("liquids", [])
+    updated_liquids = []
+
+    for idx, liquid in enumerate(liquids):
+        col1, col2, col3 = st.columns([2, 1, 1])
+        with col1:
+            liquid_type = st.text_input(
+                f"Liquid Type ({liquid['type']}):", value=liquid["type"], key=f"liquid_type_{phase_name}_{idx}"
+            )
+        with col2:
+            liquid_volume = st.number_input(
+                f"Volume ({liquid['type']}, L):", min_value=0.0, value=liquid["volume"], step=0.1, key=f"volume_{phase_name}_{idx}"
+            )
+        with col3:
+            if st.button(f"Remove {liquid['type']}", key=f"remove_{phase_name}_{idx}"):
+                continue  # Skip adding this liquid to updated list
+
+        updated_liquids.append({"type": liquid_type, "volume": liquid_volume})
+
+    # Add a new liquid to this phase
+    st.write(f"Add a new liquid to {phase_name}:")
+    col1, col2, col3 = st.columns([2, 1, 1])
     with col1:
-        new_phase_name = st.text_input(f"Phase Name ({phase_name}):", value=phase_name, key=f"phase_{phase_name}")
+        new_liquid_type = st.text_input(f"New Liquid Type for {phase_name}:", key=f"new_liquid_type_{phase_name}")
     with col2:
-        liquid_type = st.text_input(
-            f"Liquid Type for {phase_name}:", value=phase_data["liquid_type"], key=f"liquid_type_{phase_name}"
+        new_liquid_volume = st.number_input(
+            f"New Liquid Volume (L) for {phase_name}:", min_value=0.0, key=f"new_liquid_volume_{phase_name}"
         )
     with col3:
-        liquid_volume = st.number_input(
-            f"Volume of {liquid_type} (L):", min_value=0.0, value=phase_data["liquid_volume"], step=0.1, key=f"volume_{phase_name}"
-        )
-    with col4:
-        if st.button(f"Remove {phase_name}", key=f"remove_{phase_name}"):
-            del phases[phase_name]
-            continue
+        if st.button(f"Add Liquid to {phase_name}", key=f"add_liquid_{phase_name}"):
+            if new_liquid_type and new_liquid_volume > 0:
+                updated_liquids.append({"type": new_liquid_type, "volume": new_liquid_volume})
+                st.success(f"Added {new_liquid_type} to {phase_name}.")
+            else:
+                st.error("Please provide a valid liquid type and volume.")
 
-    updated_phases[new_phase_name] = {
-        "liquid_type": liquid_type,
-        "liquid_volume": liquid_volume
-    }
+    updated_phases[phase_name] = {"liquids": updated_liquids}
 
 # Add a new phase
 st.write("### Add New Phase")
-col1, col2, col3, col4 = st.columns([2, 1, 1, 1])
+col1, col2 = st.columns([3, 1])
 with col1:
     new_phase_name = st.text_input("New Phase Name:", key="new_phase_name")
 with col2:
-    new_liquid_type = st.text_input("New Liquid Type:", key="new_liquid_type")
-with col3:
-    new_liquid_volume = st.number_input("New Liquid Volume (L):", min_value=0.0, key="new_liquid_volume")
-with col4:
     if st.button("Add Phase", key="add_phase"):
         if new_phase_name and new_phase_name not in updated_phases:
-            updated_phases[new_phase_name] = {
-                "liquid_type": new_liquid_type,
-                "liquid_volume": new_liquid_volume
-            }
+            updated_phases[new_phase_name] = {"liquids": []}
             st.success(f"Phase '{new_phase_name}' added successfully!")
         elif new_phase_name in updated_phases:
             st.error(f"Phase '{new_phase_name}' already exists. Please choose a different name.")
@@ -464,29 +474,45 @@ with col4:
 st.session_state.phases = updated_phases
 
 # Calculate Solid/Liquid Ratios
-st.header("Solid/Liquid Ratios for Each Phase")
+st.header("Solid/Liquid Ratios for Each Phase and Liquid Type")
 sl_results = []
 for phase_name, phase_data in st.session_state.phases.items():
-    liquid_volume = phase_data["liquid_volume"]
-    sl_ratio = black_mass / liquid_volume if liquid_volume > 0 else 0
-    sl_results.append({"Phase": phase_name, "Liquid Type": phase_data["liquid_type"], "S/L Ratio": sl_ratio})
+    phase_liquids = phase_data["liquids"]
+    total_liquid_volume = sum(liquid["volume"] for liquid in phase_liquids)
+    for liquid in phase_liquids:
+        liquid_ratio = black_mass / liquid["volume"] if liquid["volume"] > 0 else 0
+        sl_results.append({
+            "Phase": phase_name,
+            "Liquid Type": liquid["type"],
+            "Liquid Volume (L)": liquid["volume"],
+            "S/L Ratio (Per Liquid)": liquid_ratio
+        })
+
+    overall_sl_ratio = black_mass / total_liquid_volume if total_liquid_volume > 0 else 0
+    sl_results.append({
+        "Phase": phase_name,
+        "Liquid Type": "Overall",
+        "Liquid Volume (L)": total_liquid_volume,
+        "S/L Ratio (Per Liquid)": overall_sl_ratio
+    })
 
 # Display Results in a Table
-st.write("**S/L Ratio Results Across Phases:**")
+st.write("**S/L Ratio Results for Each Phase and Liquid Type:**")
 sl_df = pd.DataFrame(sl_results)
 st.table(sl_df)
 
 # Feedback on S/L Ratios
 st.header("Feedback on S/L Ratios")
 for result in sl_results:
-    phase = result["Phase"]
-    ratio = result["S/L Ratio"]
-    if ratio < st.session_state.sl_feedback_thresholds["low"]:
-        st.warning(f"S/L ratio for {phase} is too low. Consider reducing the liquid volume.")
-    elif ratio > st.session_state.sl_feedback_thresholds["high"]:
-        st.warning(f"S/L ratio for {phase} is too high. Consider increasing the liquid volume.")
-    else:
-        st.success(f"S/L ratio for {phase} is within the optimal range.")
+    if result["Liquid Type"] == "Overall":  # Feedback only for overall ratios
+        phase = result["Phase"]
+        ratio = result["S/L Ratio (Per Liquid)"]
+        if ratio < st.session_state.sl_feedback_thresholds["low"]:
+            st.warning(f"S/L ratio for {phase} (overall) is too low. Consider reducing the liquid volume.")
+        elif ratio > st.session_state.sl_feedback_thresholds["high"]:
+            st.warning(f"S/L ratio for {phase} (overall) is too high. Consider increasing the liquid volume.")
+        else:
+            st.success(f"S/L ratio for {phase} (overall) is within the optimal range.")
 
 
 
