@@ -387,20 +387,10 @@ def initialize_sl_tool():
     if "sl_feedback_thresholds" not in st.session_state:
         st.session_state.sl_feedback_thresholds = {"low": 0.1, "high": 0.6}
 
-# Initialize default parameters for phases
-def initialize_sl_tool():
-    if "phases" not in st.session_state:
-        st.session_state.phases = {
-            "Leaching in Water": {"liquid_type": "Water", "liquid_volume": 20.0},
-            "Leaching in Acid": {"liquid_type": "Malic Acid", "liquid_volume": 5.0}
-        }
-    if "sl_feedback_thresholds" not in st.session_state:
-        st.session_state.sl_feedback_thresholds = {"low": 0.1, "high": 0.6}
-
 # Initialize session state
 initialize_sl_tool()
 
-st.title("Solid/Liquid Ratio Management for Each Phase")
+st.title("Solid/Liquid Ratio Management for Multiple Phases")
 
 # Input: Total Black Mass
 st.sidebar.header("General Inputs")
@@ -419,13 +409,15 @@ high_threshold = st.sidebar.number_input(
 st.session_state.sl_feedback_thresholds["low"] = low_threshold
 st.session_state.sl_feedback_thresholds["high"] = high_threshold
 
-# Manage Process Phases
-st.header("Process Phases and Liquid Inputs")
+# Manage Process Phases Dynamically
+st.header("Manage Process Phases")
 phases = st.session_state.phases
 updated_phases = {}
 
+# Display existing phases
+st.write("### Existing Phases")
 for phase_name, phase_data in phases.items():
-    col1, col2, col3 = st.columns([2, 1, 1])
+    col1, col2, col3, col4 = st.columns([2, 1, 1, 1])
     with col1:
         new_phase_name = st.text_input(f"Phase Name ({phase_name}):", value=phase_name, key=f"phase_{phase_name}")
     with col2:
@@ -436,17 +428,43 @@ for phase_name, phase_data in phases.items():
         liquid_volume = st.number_input(
             f"Volume of {liquid_type} (L):", min_value=0.0, value=phase_data["liquid_volume"], step=0.1, key=f"volume_{phase_name}"
         )
+    with col4:
+        if st.button(f"Remove {phase_name}", key=f"remove_{phase_name}"):
+            del phases[phase_name]
+            continue
 
     updated_phases[new_phase_name] = {
         "liquid_type": liquid_type,
         "liquid_volume": liquid_volume
     }
 
+# Add a new phase
+st.write("### Add New Phase")
+col1, col2, col3, col4 = st.columns([2, 1, 1, 1])
+with col1:
+    new_phase_name = st.text_input("New Phase Name:", key="new_phase_name")
+with col2:
+    new_liquid_type = st.text_input("New Liquid Type:", key="new_liquid_type")
+with col3:
+    new_liquid_volume = st.number_input("New Liquid Volume (L):", min_value=0.0, key="new_liquid_volume")
+with col4:
+    if st.button("Add Phase", key="add_phase"):
+        if new_phase_name and new_phase_name not in updated_phases:
+            updated_phases[new_phase_name] = {
+                "liquid_type": new_liquid_type,
+                "liquid_volume": new_liquid_volume
+            }
+            st.success(f"Phase '{new_phase_name}' added successfully!")
+        elif new_phase_name in updated_phases:
+            st.error(f"Phase '{new_phase_name}' already exists. Please choose a different name.")
+        else:
+            st.error("Phase name cannot be empty.")
+
 # Save updated phases to session state
 st.session_state.phases = updated_phases
 
 # Calculate Solid/Liquid Ratios
-st.header("Solid/Liquid Ratio for Each Phase")
+st.header("Solid/Liquid Ratios for Each Phase")
 sl_results = []
 for phase_name, phase_data in st.session_state.phases.items():
     liquid_volume = phase_data["liquid_volume"]
@@ -454,7 +472,7 @@ for phase_name, phase_data in st.session_state.phases.items():
     sl_results.append({"Phase": phase_name, "Liquid Type": phase_data["liquid_type"], "S/L Ratio": sl_ratio})
 
 # Display Results in a Table
-st.write("**S/L Ratio Results:**")
+st.write("**S/L Ratio Results Across Phases:**")
 sl_df = pd.DataFrame(sl_results)
 st.table(sl_df)
 
@@ -469,6 +487,7 @@ for result in sl_results:
         st.warning(f"S/L ratio for {phase} is too high. Consider increasing the liquid volume.")
     else:
         st.success(f"S/L ratio for {phase} is within the optimal range.")
+
 
 
 
