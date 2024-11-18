@@ -279,3 +279,79 @@ st.table(capex_table)
 st.subheader("OpEx Table")
 opex_table = model.generate_table(model.opex)
 st.table(opex_table)
+
+# Technical KPI: Efficiency
+st.subheader("Technical KPI: Efficiency")
+
+# Define default material composition
+if "composition" not in st.session_state:
+    st.session_state.composition = {'Li': 7.0, 'Co': 15.0, 'Ni': 10.0, 'Mn': 8.0}  # Default percentages
+
+# Display and allow the user to edit default materials
+st.markdown("### Material Composition")
+total_percentage = 0  # Track the sum of percentages
+updated_composition = {}
+
+for material, percentage in list(st.session_state.composition.items()):
+    col1, col2, col3 = st.columns([2, 1, 1])
+    with col1:
+        # Allow editing of material names
+        new_material = st.text_input(f"Edit Material Name ({material})", value=material, key=f"edit_material_{material}")
+    with col2:
+        # Allow editing of material percentages
+        new_percentage = st.number_input(
+            f"Percentage of {material} (%)",
+            min_value=0.0,
+            max_value=100.0,
+            value=percentage,
+            key=f"edit_percentage_{material}"
+        )
+    with col3:
+        # Option to remove material
+        if st.button(f"Remove {material}", key=f"remove_material_{material}"):
+            st.session_state.composition.pop(material, None)
+
+    # Save updated composition
+    updated_composition[new_material] = new_percentage
+    total_percentage += new_percentage
+
+# Add a new material dynamically
+st.markdown("**Add New Material**")
+new_material_name = st.text_input("New Material Name", key="new_material_name")
+new_material_percentage = st.number_input("New Material Percentage (%)", min_value=0.0, max_value=100.0, key="new_material_percentage")
+if st.button("Add Material"):
+    if new_material_name and new_material_name not in updated_composition:
+        updated_composition[new_material_name] = new_material_percentage
+        st.success(f"Added new material: {new_material_name}")
+    elif new_material_name in updated_composition:
+        st.error(f"Material {new_material_name} already exists!")
+
+# Update session state with new composition
+st.session_state.composition = updated_composition
+
+# Warn if total percentage exceeds 100
+if total_percentage > 100:
+    st.warning(f"Total material composition exceeds 100% (currently {total_percentage:.2f}%). Adjust values accordingly.")
+elif total_percentage < 100:
+    st.info(f"Total material composition is below 100% (currently {total_percentage:.2f}%).")
+
+# Efficiency Calculation
+st.markdown("### Process Efficiency")
+overall_efficiency = st.slider("Set Overall Process Efficiency (%)", min_value=0, max_value=100, value=85) / 100
+
+# Calculate total recovered mass
+total_black_mass = model.black_mass
+total_recovered_mass = total_black_mass * overall_efficiency
+
+# Calculate recovered mass per material based on user-defined composition
+recovered_masses = {
+    material: total_recovered_mass * (percentage / 100)
+    for material, percentage in st.session_state.composition.items()
+}
+
+# Display Results
+st.write(f"**Overall Process Efficiency:** {overall_efficiency * 100:.2f}%")
+st.write(f"**Total Recovered Mass (kg):** {total_recovered_mass:.2f}")
+st.write("**Recovered Mass by Material (kg):**")
+st.table(pd.DataFrame(recovered_masses.items(), columns=["Material", "Recovered Mass (kg)"]))
+
