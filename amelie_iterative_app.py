@@ -387,6 +387,16 @@ def initialize_sl_tool():
     if "sl_feedback_thresholds" not in st.session_state:
         st.session_state.sl_feedback_thresholds = {"low": 0.1, "high": 0.6}
 
+# Initialize default parameters for phases
+def initialize_sl_tool():
+    if "phases" not in st.session_state:
+        st.session_state.phases = {
+            "Leaching in Water": {"liquid_type": "Water", "liquid_volume": 20.0},
+            "Leaching in Acid": {"liquid_type": "Malic Acid", "liquid_volume": 5.0}
+        }
+    if "sl_feedback_thresholds" not in st.session_state:
+        st.session_state.sl_feedback_thresholds = {"low": 0.1, "high": 0.6}
+
 # Initialize session state
 initialize_sl_tool()
 
@@ -459,6 +469,7 @@ for result in sl_results:
         st.warning(f"S/L ratio for {phase} is too high. Consider increasing the liquid volume.")
     else:
         st.success(f"S/L ratio for {phase} is within the optimal range.")
+
 
 
 
