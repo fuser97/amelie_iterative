@@ -419,7 +419,30 @@ composition = st.session_state.composition
 updated_composition = {}
 
 total_percentage = 0
+# Reinitialize composition if corrupted
+if not isinstance(st.session_state.composition, dict):
+    st.session_state.composition = {
+        'Li': {'percentage': 7.0, 'recovered_mass': 0.0},
+        'Co': {'percentage': 15.0, 'recovered_mass': 0.0},
+        'Ni': {'percentage': 10.0, 'recovered_mass': 0.0},
+        'Mn': {'percentage': 8.0, 'recovered_mass': 0.0}
+    }
+
+composition = st.session_state.composition
+updated_composition = {}
+
+# Iterate through materials
 for material, values in list(composition.items()):
+    # Ensure values is a dictionary
+    if isinstance(values, float):
+        values = {'percentage': values, 'recovered_mass': 0.0}
+    elif isinstance(values, dict):
+        values.setdefault('percentage', 0.0)
+        values.setdefault('recovered_mass', 0.0)
+    else:
+        st.error(f"Unexpected data type for material {material}. Resetting.")
+        values = {'percentage': 0.0, 'recovered_mass': 0.0}
+
     col1, col2, col3 = st.columns([2, 1, 1])
     with col1:
         new_material = st.text_input(f"Material Name ({material}):", value=material, key=f"material_{material}")
@@ -428,14 +451,14 @@ for material, values in list(composition.items()):
             f"{material} Percentage in BM (%):",
             min_value=0.0,
             max_value=100.0,
-            value=values.get('percentage', 0.0),  # Safely handle missing 'percentage'
+            value=values['percentage'],
             key=f"percentage_{material}"
         )
     with col3:
         recovered_mass = st.number_input(
             f"Recovered Mass ({material}, kg):",
             min_value=0.0,
-            value=values.get('recovered_mass', 0.0),  # Safely handle missing 'recovered_mass'
+            value=values['recovered_mass'],
             step=0.1,
             key=f"recovered_mass_{material}"
         )
@@ -447,7 +470,10 @@ for material, values in list(composition.items()):
         'percentage': new_percentage,
         'recovered_mass': recovered_mass
     }
-    total_percentage += new_percentage
+
+# Save updated composition to session state
+st.session_state.composition = updated_composition
+
 
 # Save updated composition to session state
 st.session_state.composition = updated_composition
