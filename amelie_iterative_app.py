@@ -428,14 +428,14 @@ for material, values in list(composition.items()):
             f"{material} Percentage in BM (%):",
             min_value=0.0,
             max_value=100.0,
-            value=values['percentage'],
+            value=values.get('percentage', 0.0),  # Safely handle missing 'percentage'
             key=f"percentage_{material}"
         )
     with col3:
         recovered_mass = st.number_input(
             f"Recovered Mass ({material}, kg):",
             min_value=0.0,
-            value=values['recovered_mass'],
+            value=values.get('recovered_mass', 0.0),  # Safely handle missing 'recovered_mass'
             step=0.1,
             key=f"recovered_mass_{material}"
         )
