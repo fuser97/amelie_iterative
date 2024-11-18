@@ -377,6 +377,9 @@ result_df = pd.DataFrame({
 st.table(result_df)
 
 
+import streamlit as st
+import pandas as pd
+
 # Initialize default parameters for phases
 def initialize_sl_tool():
     if "phases" not in st.session_state:
@@ -505,23 +508,44 @@ for phase_name, phase_data in st.session_state.phases.items():
         "S/L Ratio (Per Liquid)": overall_sl_ratio
     })
 
-# Display Results in a Table
+# Display Detailed Table
 st.write("**S/L Ratio Results for Each Phase and Liquid Type:**")
 sl_df = pd.DataFrame(sl_results)
+
+# Ensure consistent phase grouping without removing phase names
 st.table(sl_df)
 
-# Feedback on S/L Ratios
-st.header("Feedback on S/L Ratios")
-for result in sl_results:
-    if result["Liquid Type"] == "Overall":  # Feedback only for overall ratios
-        phase = result["Phase"]
-        ratio = result["S/L Ratio (Per Liquid)"]
-        if ratio < st.session_state.sl_feedback_thresholds["low"]:
-            st.warning(f"S/L ratio for {phase} (overall) is too low. Consider reducing the liquid volume.")
-        elif ratio > st.session_state.sl_feedback_thresholds["high"]:
-            st.warning(f"S/L ratio for {phase} (overall) is too high. Consider increasing the liquid volume.")
-        else:
-            st.success(f"S/L ratio for {phase} (overall) is within the optimal range.")
+# Calculate Overall Totals
+st.write("**Summary of Total Solid/Liquid Ratios Across All Phases:**")
+
+# Total mass and total liquid volume
+total_mass = sl_df[sl_df["Liquid Type"] == "Overall"]["Phase Mass (kg)"].sum()
+total_liquid_volume = sl_df[sl_df["Liquid Type"] == "Overall"]["Liquid Volume (L)"].sum()
+overall_sl_ratio = total_mass / total_liquid_volume if total_liquid_volume > 0 else 0
+
+# Total volume by liquid type
+total_by_liquid_type = sl_df[sl_df["Liquid Type"] != "Overall"].groupby("Liquid Type").agg({
+    "Phase Mass (kg)": "sum",
+    "Liquid Volume (L)": "sum"
+}).reset_index()
+
+# Add calculated S/L ratio for each liquid type
+total_by_liquid_type["S/L Ratio"] = total_by_liquid_type["Phase Mass (kg)"] / total_by_liquid_type["Liquid Volume (L)"]
+
+# Summary Table
+summary_data = {
+    "Total Mass (kg)": [total_mass],
+    "Total Liquid Volume (L)": [total_liquid_volume],
+    "Overall S/L Ratio": [overall_sl_ratio]
+}
+summary_df = pd.DataFrame(summary_data)
+
+st.write("**Overall Ratios:**")
+st.table(summary_df)
+
+st.write("**Ratios by Liquid Type Across All Phases:**")
+st.table(total_by_liquid_type)
+
 
 
 
