@@ -375,8 +375,6 @@ result_df = pd.DataFrame({
     "Efficiency (%)": [efficiencies.get(m, 0.0) for m in st.session_state.composition.keys()]
 })
 st.table(result_df)
-
-
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -421,7 +419,7 @@ composition = st.session_state.composition
 updated_composition = {}
 
 total_percentage = 0
-for material, values in composition.items():
+for material, values in list(composition.items()):
     col1, col2, col3 = st.columns([2, 1, 1])
     with col1:
         new_material = st.text_input(f"Material Name ({material}):", value=material, key=f"material_{material}")
@@ -441,6 +439,9 @@ for material, values in composition.items():
             step=0.1,
             key=f"recovered_mass_{material}"
         )
+
+    if new_material != material:
+        del composition[material]
 
     updated_composition[new_material] = {
         'percentage': new_percentage,
@@ -484,6 +485,11 @@ result_df.columns = ["Material", "Initial Mass in BM (kg)", "Recovered Mass (kg)
 
 st.write("**Detailed Efficiency Results:**")
 st.table(result_df)
+
+# Sensitivity Analysis Placeholder
+st.header("Sensitivity Analysis")
+st.markdown("Future implementation: run scenarios by varying S/L ratio, compositions, and recovery efficiencies.")
+
 
 # Sensitivity Analysis Placeholder
 st.header("Sensitivity Analysis")
