@@ -377,130 +377,88 @@ result_df = pd.DataFrame({
 st.table(result_df)
 
 
-# Initialize default parameters
+# Initialize default parameters for phases
 def initialize_sl_tool():
-    if "composition" not in st.session_state:
-        st.session_state.composition = {
-            'Li': {'percentage': 7.0, 'recovered_mass': 0.0},
-            'Co': {'percentage': 15.0, 'recovered_mass': 0.0},
-            'Ni': {'percentage': 10.0, 'recovered_mass': 0.0},
-            'Mn': {'percentage': 8.0, 'recovered_mass': 0.0}
+    if "phases" not in st.session_state:
+        st.session_state.phases = {
+            "Leaching in Water": {"liquid_type": "Water", "liquid_volume": 20.0},
+            "Leaching in Acid": {"liquid_type": "Malic Acid", "liquid_volume": 5.0}
         }
-    if "sl_ratios" not in st.session_state:
-        st.session_state.sl_ratios = {}
+    if "sl_feedback_thresholds" not in st.session_state:
+        st.session_state.sl_feedback_thresholds = {"low": 0.1, "high": 0.6}
 
 # Initialize session state
 initialize_sl_tool()
 
-st.title("Solid/Liquid Ratio and Recovery Efficiency Tool")
+st.title("Solid/Liquid Ratio Management for Each Phase")
 
-# Input: Total Black Mass and Liquid Volume
-st.sidebar.header("Process Inputs")
+# Input: Total Black Mass
+st.sidebar.header("General Inputs")
 black_mass = st.sidebar.number_input("Total Black Mass (kg):", min_value=0.1, value=10.0, step=0.1)
-liquid_volume = st.sidebar.number_input("Liquid Volume (L):", min_value=0.1, value=25.0, step=0.1)
 
-# Compute Solid/Liquid Ratio
-sl_ratio = black_mass / liquid_volume if liquid_volume > 0 else 0
-st.sidebar.write(f"**Solid/Liquid Ratio (S/L):** {sl_ratio:.2f}")
+# Dynamic Feedback Thresholds
+st.sidebar.header("Set Feedback Thresholds")
+low_threshold = st.sidebar.number_input(
+    "Low Threshold for S/L Ratio:", min_value=0.0, max_value=1.0, value=st.session_state.sl_feedback_thresholds["low"], step=0.01
+)
+high_threshold = st.sidebar.number_input(
+    "High Threshold for S/L Ratio:", min_value=0.0, max_value=2.0, value=st.session_state.sl_feedback_thresholds["high"], step=0.01
+)
 
-# Validate S/L Ratio
-if sl_ratio < 0.1:
-    st.sidebar.warning("S/L ratio is too low; consider reducing the liquid volume.")
-elif sl_ratio > 0.6:
-    st.sidebar.warning("S/L ratio is too high; consider increasing the liquid volume.")
-else:
-    st.sidebar.success("S/L ratio is within optimal range.")
+# Update thresholds in session state
+st.session_state.sl_feedback_thresholds["low"] = low_threshold
+st.session_state.sl_feedback_thresholds["high"] = high_threshold
 
-# Dynamic Material Composition
-st.header("Material Composition in Black Mass")
-composition = st.session_state.composition
-updated_composition = {}
+# Manage Process Phases
+st.header("Process Phases and Liquid Inputs")
+phases = st.session_state.phases
+updated_phases = {}
 
-total_percentage = 0
-for idx, (material, values) in enumerate(list(composition.items())):
-    # Ensure values is a dictionary
-    if isinstance(values, float):
-        values = {'percentage': values, 'recovered_mass': 0.0}
-    elif isinstance(values, dict):
-        values.setdefault('percentage', 0.0)
-        values.setdefault('recovered_mass', 0.0)
-    else:
-        st.error(f"Unexpected data type for material {material}. Resetting.")
-        values = {'percentage': 0.0, 'recovered_mass': 0.0}
-
+for phase_name, phase_data in phases.items():
     col1, col2, col3 = st.columns([2, 1, 1])
     with col1:
-        new_material = st.text_input(
-            f"Material Name ({material}):",
-            value=material,
-            key=f"material_{idx}_{material}"  # Unique key for material name
-        )
+        new_phase_name = st.text_input(f"Phase Name ({phase_name}):", value=phase_name, key=f"phase_{phase_name}")
     with col2:
-        new_percentage = st.number_input(
-            f"{material} Percentage in BM (%):",
-            min_value=0.0,
-            max_value=100.0,
-            value=values['percentage'],
-            key=f"percentage_{idx}_{material}"  # Unique key for percentage
+        liquid_type = st.text_input(
+            f"Liquid Type for {phase_name}:", value=phase_data["liquid_type"], key=f"liquid_type_{phase_name}"
         )
     with col3:
-        recovered_mass = st.number_input(
-            f"Recovered Mass ({material}, kg):",
-            min_value=0.0,
-            value=values['recovered_mass'],
-            step=0.1,
-            key=f"recovered_mass_{idx}_{material}"  # Unique key for recovered mass
+        liquid_volume = st.number_input(
+            f"Volume of {liquid_type} (L):", min_value=0.0, value=phase_data["liquid_volume"], step=0.1, key=f"volume_{phase_name}"
         )
 
-    if new_material != material:
-        del composition[material]
-
-    updated_composition[new_material] = {
-        'percentage': new_percentage,
-        'recovered_mass': recovered_mass
+    updated_phases[new_phase_name] = {
+        "liquid_type": liquid_type,
+        "liquid_volume": liquid_volume
     }
-    total_percentage += new_percentage
 
-# Save updated composition to session state
-st.session_state.composition = updated_composition
+# Save updated phases to session state
+st.session_state.phases = updated_phases
 
-# Display warning for composition percentages
-if total_percentage > 100:
-    st.warning(f"Total composition exceeds 100% (currently {total_percentage:.2f}%). Adjust values.")
-elif total_percentage < 100:
-    st.info(f"Total composition is below 100% (currently {total_percentage:.2f}%).")
+# Calculate Solid/Liquid Ratios
+st.header("Solid/Liquid Ratio for Each Phase")
+sl_results = []
+for phase_name, phase_data in st.session_state.phases.items():
+    liquid_volume = phase_data["liquid_volume"]
+    sl_ratio = black_mass / liquid_volume if liquid_volume > 0 else 0
+    sl_results.append({"Phase": phase_name, "Liquid Type": phase_data["liquid_type"], "S/L Ratio": sl_ratio})
 
-# Calculate Recovery Efficiency
-st.header("Recovery Efficiency")
-efficiencies = {}
-total_recovered_mass = 0
+# Display Results in a Table
+st.write("**S/L Ratio Results:**")
+sl_df = pd.DataFrame(sl_results)
+st.table(sl_df)
 
-for material, values in st.session_state.composition.items():
-    initial_mass = black_mass * (values['percentage'] / 100)
-    recovered_mass = values['recovered_mass']
-    efficiency = (recovered_mass / initial_mass) * 100 if initial_mass > 0 else 0
-    efficiencies[material] = {
-        'initial_mass': initial_mass,
-        'recovered_mass': recovered_mass,
-        'efficiency': efficiency
-    }
-    total_recovered_mass += recovered_mass
-
-# Compute Overall Efficiency
-overall_efficiency = (total_recovered_mass / black_mass) * 100
-
-# Display Results
-st.write(f"**Overall Process Efficiency:** {overall_efficiency:.2f}%")
-result_df = pd.DataFrame.from_dict(efficiencies, orient='index')
-result_df.reset_index(inplace=True)
-result_df.columns = ["Material", "Initial Mass in BM (kg)", "Recovered Mass (kg)", "Efficiency (%)"]
-
-st.write("**Detailed Efficiency Results:**")
-st.table(result_df)
-
-# Sensitivity Analysis Placeholder
-st.header("Sensitivity Analysis")
-st.markdown("Future implementation: run scenarios by varying S/L ratio, compositions, and recovery efficiencies.")
+# Feedback on S/L Ratios
+st.header("Feedback on S/L Ratios")
+for result in sl_results:
+    phase = result["Phase"]
+    ratio = result["S/L Ratio"]
+    if ratio < st.session_state.sl_feedback_thresholds["low"]:
+        st.warning(f"S/L ratio for {phase} is too low. Consider reducing the liquid volume.")
+    elif ratio > st.session_state.sl_feedback_thresholds["high"]:
+        st.warning(f"S/L ratio for {phase} is too high. Consider increasing the liquid volume.")
+    else:
+        st.success(f"S/L ratio for {phase} is within the optimal range.")
 
 
 
