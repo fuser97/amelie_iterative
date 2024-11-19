@@ -4,6 +4,99 @@ import matplotlib.pyplot as plt
 import streamlit as st
 import pandas as pd
 import io
+import sqlite3
+import json
+
+# Initialize the database
+def init_db():
+    conn = sqlite3.connect("scenarios.db")
+    c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS scenarios (
+                    username TEXT,
+                    scenario_name TEXT,
+                    data TEXT
+                )''')
+    conn.commit()
+    conn.close()
+
+init_db()
+def login():
+    st.sidebar.title("Login")
+    username = st.sidebar.text_input("Username")
+    password = st.sidebar.text_input("Password", type="password")
+    if st.sidebar.button("Login"):
+        if username in user_db and user_db[username] == password:
+            st.session_state["logged_in"] = True
+            st.session_state["username"] = username
+            st.sidebar.success(f"Welcome, {username}!")
+        else:
+            st.sidebar.error("Invalid username or password")
+
+# Handle login
+if "logged_in" not in st.session_state or not st.session_state["logged_in"]:
+    login()
+    st.stop()
+def save_scenario_to_db(username, scenario_name, scenario_data):
+    conn = sqlite3.connect("scenarios.db")
+    c = conn.cursor()
+    c.execute("SELECT COUNT(*) FROM scenarios WHERE username=? AND scenario_name=?", (username, scenario_name))
+    exists = c.fetchone()[0]
+
+    if exists:
+        c.execute("UPDATE scenarios SET data=? WHERE username=? AND scenario_name=?",
+                  (json.dumps(scenario_data), username, scenario_name))
+    else:
+        c.execute("INSERT INTO scenarios (username, scenario_name, data) VALUES (?, ?, ?)",
+                  (username, scenario_name, json.dumps(scenario_data)))
+
+    conn.commit()
+    conn.close()
+    return "Scenario saved successfully!" if not exists else "Scenario updated successfully!"
+    
+def load_scenarios_from_db(username):
+    conn = sqlite3.connect("scenarios.db")
+    c = conn.cursor()
+    c.execute("SELECT scenario_name, data FROM scenarios WHERE username=?", (username,))
+    rows = c.fetchall()
+    conn.close()
+    return {row[0]: json.loads(row[1]) for row in rows}
+
+user_db = {"user1": "password1", "user2": "password2"}  # Replace with a proper user management system
+
+# Save the current scenario
+def save_current_scenario():
+    username = st.session_state.get("username", "guest")
+    scenario_name = st.text_input("Enter Scenario Name:")
+    if st.button("Save Scenario"):
+        if scenario_name:
+            # Collect current app state
+            scenario_data = {
+                "economic_kpis": st.session_state.get("economic_kpis", {}),
+                "technical_kpis": st.session_state.get("technical_kpis", {})
+            }
+            message = save_scenario_to_db(username, scenario_name, scenario_data)
+            st.success(message)
+        else:
+            st.error("Please provide a scenario name.")
+
+# Load a saved scenario
+def load_scenario():
+    username = st.session_state.get("username", "guest")
+    scenarios = load_scenarios_from_db(username)
+    st.markdown("### Load Scenario")
+    scenario_list = list(scenarios.keys())
+    if scenario_list:
+        selected_scenario = st.selectbox("Select a scenario to load:", scenario_list)
+        if st.button("Load Scenario"):
+            scenario_data = scenarios[selected_scenario]
+            # Update session state with loaded scenario
+            for key, value in scenario_data.items():
+                st.session_state[key] = value
+            st.success(f"Scenario '{selected_scenario}' loaded!")
+    else:
+        st.info("No saved scenarios available.")
+
+
 
 # Configure the page layout
 st.set_page_config(
@@ -234,6 +327,22 @@ def economic_kpis():
     st.write(f"**Total CapEx:** {capex_total} EUR")
     st.write(f"**Total OpEx (including energy):** {opex_total} EUR/batch")
 
+    st.session_state["economic_kpis"] = {
+      "general_assumptions": st.session_state.get("general_assumptions", []),
+      "capex_data": st.session_state.get("capex_data", {}),
+      "opex_data": st.session_state.get("opex_data", {}),
+      "energy_data": st.session_state.get("energy_data", {}),
+      "results": {
+          "capex_total": capex_total,
+          "opex_total": opex_total
+      }
+  }
+    st.sidebar.title("Scenario Management")
+if st.sidebar.button("Save Current Scenario"):
+    save_current_scenario()
+if st.sidebar.button("Load Existing Scenario"):
+    load_scenario()
+
 
 
 import pandas as pd
@@ -398,6 +507,21 @@ def technical_kpis():
 
         sl_df = pd.DataFrame(sl_results)
         st.table(sl_df)
+        st.session_state["technical_kpis"] = {
+    "composition": st.session_state.get("composition", {}),
+    "phases": st.session_state.get("phases", {}),
+    "efficiency_results": {
+        "overall_efficiency": overall_efficiency,
+        "per_material": result_df.to_dict("records")
+    },
+    "solid_liquid_ratios": sl_df.to_dict("records")
+}
+        st.sidebar.title("Scenario Management")
+if st.sidebar.button("Save Current Scenario"):
+    save_current_scenario()
+if st.sidebar.button("Load Existing Scenario"):
+    load_scenario()
+
 
 # Render the selected page
 if page == "Economic KPIs":
