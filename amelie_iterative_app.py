@@ -318,6 +318,7 @@ def economic_kpis():
     if st.sidebar.button("Load Existing Scenario"):
         load_scenario()
 
+
 # Technical KPIs Page
 def technical_kpis():
     st.title("Technical KPIs: Efficiency and Solid/Liquid Ratios")
@@ -492,6 +493,7 @@ def technical_kpis():
         save_current_scenario()
     if st.sidebar.button("Load Existing Scenario"):
         load_scenario()
+
 # Sidebar Navigation
 st.sidebar.title("Navigation")
 page = st.sidebar.radio("Select a Page:", ["Economic KPIs", "Technical KPIs"])
