@@ -111,9 +111,7 @@ def economic_kpis():
     if "energy_data" not in st.session_state:
         st.session_state.energy_data = model.energy_consumption.copy()
     if "energy_cost" not in st.session_state:
-       energy_cost = st.number_input("Cost per kWh (EUR):", value=st.session_state.get("energy_cost", 0.12), min_value=0.0, key="energy_cost")
-       
-
+        st.session_state.energy_cost = 0.12  # Default value if not set
 
     # Add a section dropdown
     sections = ["General Assumptions", "CapEx Configuration", "OpEx Configuration", "Results"]
@@ -122,16 +120,14 @@ def economic_kpis():
     # General Assumptions Section
     if selected_section == "General Assumptions":
         st.subheader("General Assumptions")
-        
-        # Initialize assumptions if not already in session state
         if "assumptions" not in st.session_state:
             st.session_state.assumptions = [
                 "Batch Size (10 kg)",
                 "1 Operator per Batch",
                 "Process Includes: Pre-treatment, microwave thermal treatment, leaching in water, precipitation, secondary drying, leaching in acid, and wastewater treatment"
             ]
-    
-        # Display existing assumptions with editing options
+
+        # Display assumptions
         assumptions_to_delete = []
         for idx, assumption in enumerate(st.session_state.assumptions):
             col1, col2 = st.columns([4, 1])
@@ -140,13 +136,11 @@ def economic_kpis():
             with col2:
                 if st.button("Remove", key=f"remove_assumption_{idx}"):
                     assumptions_to_delete.append(idx)
-    
-        # Remove deleted assumptions
+
         for idx in sorted(assumptions_to_delete, reverse=True):
             st.session_state.assumptions.pop(idx)
-    
-        # Add a new assumption
-        st.markdown("**Add New Assumption**")
+
+        # Add new assumption
         new_assumption = st.text_input("New Assumption:", key="new_assumption")
         if st.button("Add Assumption", key="add_assumption"):
             if new_assumption:
@@ -154,14 +148,10 @@ def economic_kpis():
                 st.success(f"Added new assumption: {new_assumption}")
             else:
                 st.error("Assumption cannot be empty!")
-    
-        # Display all assumptions
+
         st.markdown("### Current Assumptions")
         for idx, assumption in enumerate(st.session_state.assumptions, 1):
             st.write(f"{idx}. {assumption}")
-    
-        flowchart_path = "processo.png"
-        st.image(flowchart_path, caption="Recycling Process Flowchart (UNIBS) (from Rallo thesis)", use_column_width=True)
 
     # CapEx Configuration Section
     elif selected_section == "CapEx Configuration":
@@ -182,8 +172,6 @@ def economic_kpis():
         for item in capex_to_delete:
             del st.session_state.capex_data[item]
 
-        # Add new CapEx item
-        st.markdown("**Add New CapEx Item**")
         new_name = st.text_input("New CapEx Name:", key="new_capex_name")
         new_cost = st.number_input("New CapEx Cost (EUR):", min_value=0.0, key="new_capex_cost")
         if st.button("Add CapEx"):
@@ -193,131 +181,77 @@ def economic_kpis():
             else:
                 st.error("CapEx item already exists or name is invalid!")
 
-        # Update the model
         model.capex = st.session_state.capex_data
 
-     # OpEx Configuration Section
+    # OpEx Configuration Section
     elif selected_section == "OpEx Configuration":
         st.subheader("OpEx Configuration")
-    
-        # Temporary variables
-        energy_data_temp = st.session_state.energy_data.copy()
-        opex_data_temp = st.session_state.opex_data.copy()
-    
+
         # Energy Configuration
         st.markdown("### Energy Configuration")
-    
-        # Define cost per kWh
-        energy_cost = st.number_input(
-            "Cost per kWh (EUR):",
-            value=st.session_state.get("energy_cost", 0.12),
-            min_value=0.0,
-            key="energy_cost_input"  # Ensure key uniqueness
-        )
-    
-        # Add, edit, and delete energy equipment
+        energy_cost = st.number_input("Cost per kWh (EUR):", value=st.session_state.energy_cost, min_value=0.0)
+        st.session_state.energy_cost = energy_cost
+
         energy_to_delete = []
-        for idx, (key, value) in enumerate(energy_data_temp.items()):
+        for key, value in st.session_state.energy_data.items():
             col1, col2, col3 = st.columns([3, 2, 1])
             with col1:
-                new_name = st.text_input(
-                    f"Edit Energy Equipment ({key}):", 
-                    value=key, 
-                    key=f"energy_name_{idx}"  # Unique key for each equipment
-                )
+                new_name = st.text_input(f"Edit Energy Equipment: {key}", value=key, key=f"energy_name_{key}")
             with col2:
-                new_consumption = st.number_input(
-                    f"Energy Consumption (kWh):",
-                    value=float(value),
-                    min_value=0.0,
-                    key=f"energy_value_{idx}"  # Unique key for consumption
-                )
+                new_consumption = st.number_input(f"Energy Consumption (kWh):", value=float(value), min_value=0.0, key=f"energy_value_{key}")
             with col3:
-                if st.button("Remove", key=f"remove_energy_{idx}"):
+                if st.button("Remove", key=f"remove_energy_{key}"):
                     energy_to_delete.append(key)
-    
-            # Update temporary energy data
+
             if new_name != key:
-                energy_data_temp[new_name] = energy_data_temp.pop(key)
-            energy_data_temp[new_name] = new_consumption
-    
-        # Remove deleted energy items
+                st.session_state.energy_data[new_name] = st.session_state.energy_data.pop(key)
+            st.session_state.energy_data[new_name] = new_consumption
+
         for item in energy_to_delete:
-            del energy_data_temp[item]
-    
-        # Add new energy equipment
-        st.markdown("**Add New Energy Equipment**")
-        new_energy_name = st.text_input("New Equipment Name:", key="new_energy_name_input")
-        new_energy_value = st.number_input("Energy Consumption (kWh):", min_value=0.0, key="new_energy_value_input")
-        if st.button("Add Energy Equipment", key="add_energy_input"):
-            if new_energy_name and new_energy_name not in energy_data_temp:
-                energy_data_temp[new_energy_name] = new_energy_value
+            del st.session_state.energy_data[item]
+
+        new_energy_name = st.text_input("New Equipment Name:", key="new_energy_name")
+        new_energy_value = st.number_input("Energy Consumption (kWh):", min_value=0.0, key="new_energy_value")
+        if st.button("Add Energy Equipment"):
+            if new_energy_name and new_energy_name not in st.session_state.energy_data:
+                st.session_state.energy_data[new_energy_name] = new_energy_value
                 st.success(f"Added new energy equipment: {new_energy_name}")
             else:
                 st.error("Energy equipment already exists or name is invalid!")
-    
-        # Calculate total energy cost
-        total_energy_consumption = sum(energy_data_temp.values())
-        total_energy_cost = total_energy_consumption * energy_cost
-        opex_data_temp["Energy"] = total_energy_cost
-    
-        # Display total energy cost
+
+        total_energy_cost = sum(st.session_state.energy_data.values()) * st.session_state.energy_cost
         st.markdown(f"**Total Energy Cost:** {total_energy_cost:.2f} EUR")
-    
-        # General OpEx Configuration
-        st.markdown("### General OpEx Configuration")
+
         opex_to_delete = []
-        for idx, (key, value) in enumerate(opex_data_temp.items()):
-            if key != "Energy":  # Skip energy as it is dynamically calculated
+        for key, value in st.session_state.opex_data.items():
+            if key != "Energy":
                 col1, col2, col3 = st.columns([3, 2, 1])
                 with col1:
-                    new_name = st.text_input(
-                        f"Edit Name ({key}):", 
-                        value=key, 
-                        key=f"opex_name_{idx}"  # Unique key for each OpEx item
-                    )
+                    new_name = st.text_input(f"Edit Name: {key}", value=key, key=f"opex_name_{key}")
                 with col2:
-                    new_cost = st.number_input(
-                        f"Edit Cost (EUR):",
-                        value=float(value),
-                        min_value=0.0,
-                        key=f"opex_cost_{idx}"  # Unique key for each cost
-                    )
+                    new_cost = st.number_input(f"Edit Cost (EUR):", value=float(value), min_value=0.0, key=f"opex_cost_{key}")
                 with col3:
-                    if st.button("Remove", key=f"remove_opex_{idx}"):
+                    if st.button("Remove", key=f"remove_opex_{key}"):
                         opex_to_delete.append(key)
-    
-                # Update temporary OpEx data
+
                 if new_name != key:
-                    opex_data_temp[new_name] = opex_data_temp.pop(key)
-                opex_data_temp[new_name] = new_cost
-    
-        # Remove deleted OpEx items
+                    st.session_state.opex_data[new_name] = st.session_state.opex_data.pop(key)
+                st.session_state.opex_data[new_name] = new_cost
+
         for item in opex_to_delete:
-            del opex_data_temp[item]
-    
-        # Add new OpEx item
-        st.markdown("**Add New OpEx Item**")
-        new_opex_name = st.text_input("New OpEx Name:", key="new_opex_name_input")
-        new_opex_cost = st.number_input("New OpEx Cost (EUR):", min_value=0.0, key="new_opex_cost_input")
-        if st.button("Add OpEx", key="add_opex_input"):
-            if new_opex_name and new_opex_name not in opex_data_temp:
-                opex_data_temp[new_opex_name] = new_opex_cost
-                st.success(f"Added new OpEx item: {new_opex_name}")
+            del st.session_state.opex_data[item]
+
+        new_name = st.text_input("New OpEx Name:", key="new_opex_name")
+        new_cost = st.number_input("New OpEx Cost (EUR):", min_value=0.0, key="new_opex_cost")
+        if st.button("Add OpEx"):
+            if new_name and new_name not in st.session_state.opex_data:
+                st.session_state.opex_data[new_name] = new_cost
+                st.success(f"Added new OpEx item: {new_name}")
             else:
                 st.error("OpEx item already exists or name is invalid!")
-    
-        # Update session state in bulk to avoid conflicts
-        st.session_state.energy_data = energy_data_temp
-        st.session_state.energy_cost = energy_cost
-        st.session_state.opex_data = opex_data_temp
-    
-        # Update the model
+
         model.opex = st.session_state.opex_data
         model.energy_consumption = st.session_state.energy_data
-
-
-
 
     # Results Section
     elif selected_section == "Results":
@@ -326,7 +260,6 @@ def economic_kpis():
         st.write(f"**Total CapEx:** {capex_total} EUR")
         st.write(f"**Total OpEx (including energy):** {opex_total} EUR")
 
-        # Display charts and tables
         capex_chart = model.generate_pie_chart(st.session_state.capex_data, "CapEx Breakdown")
         st.image(capex_chart, caption="CapEx Breakdown", use_column_width=True)
 
@@ -335,6 +268,7 @@ def economic_kpis():
 
         opex_table = model.generate_table(st.session_state.opex_data)
         st.table(opex_table)
+
 
 import pandas as pd
 import streamlit as st
