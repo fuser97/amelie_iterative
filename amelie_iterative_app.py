@@ -162,7 +162,6 @@ if "logged_in" not in st.session_state or not st.session_state["logged_in"]:
     st.stop()
 
 
-# Economic KPIs Page
 def economic_kpis():
     st.title("Economic KPIs")
 
@@ -292,7 +291,12 @@ def economic_kpis():
     # Results Section
     elif selected_section == "Results":
         st.subheader("Results")
-        capex_total, opex_total = model.calculate_totals()
+        try:
+            capex_total, opex_total = model.calculate_totals()
+        except Exception as e:
+            st.error(f"Error calculating totals: {e}")
+            capex_total, opex_total = 0, 0
+
         st.write(f"**Total CapEx:** {capex_total} EUR")
         st.write(f"**Total OpEx (including energy):** {opex_total} EUR/batch")
 
@@ -313,6 +317,7 @@ def economic_kpis():
         save_current_scenario()
     if st.sidebar.button("Load Existing Scenario"):
         load_scenario()
+
 # Technical KPIs Page
 def technical_kpis():
     st.title("Technical KPIs: Efficiency and Solid/Liquid Ratios")
