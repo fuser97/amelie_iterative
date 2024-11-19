@@ -111,7 +111,9 @@ def economic_kpis():
     if "energy_data" not in st.session_state:
         st.session_state.energy_data = model.energy_consumption.copy()
     if "energy_cost" not in st.session_state:
-        st.session_state.energy_cost = model.energy_cost
+       energy_cost = st.number_input("Cost per kWh (EUR):", value=st.session_state.get("energy_cost", 0.12), min_value=0.0, key="energy_cost")
+       st.session_state.energy_cost = energy_cost
+
 
     # Add a section dropdown
     sections = ["General Assumptions", "CapEx Configuration", "OpEx Configuration", "Results"]
