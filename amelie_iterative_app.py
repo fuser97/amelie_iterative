@@ -203,50 +203,49 @@ def economic_kpis():
         # Update the model
         model.capex = st.session_state.capex_data
 
-    # OpEx Configuration Section
+        # OpEx Configuration Section
     elif selected_section == "OpEx Configuration":
         st.subheader("OpEx Configuration")
 
         # Energy Configuration
         st.markdown("### Energy Configuration")
-    for key, value in st.session_state.energy_data.items():
-        col1, col2 = st.columns([3, 2])
-        with col1:
-            new_name = st.text_input(f"Edit Energy Equipment: {key}", value=key, key=f"energy_name_{key}")
-        with col2:
-            new_consumption = st.number_input(f"Energy Consumption (kWh):", value=float(value), min_value=0.0, key=f"energy_value_{key}")
-        if new_name != key:
-            st.session_state.energy_data[new_name] = st.session_state.energy_data.pop(key)
-        st.session_state.energy_data[new_name] = new_consumption
+        for key, value in st.session_state.energy_data.items():
+            col1, col2 = st.columns([3, 2])
+            with col1:
+                new_name = st.text_input(f"Edit Energy Equipment: {key}", value=key, key=f"energy_name_{key}")
+            with col2:
+                new_consumption = st.number_input(f"Energy Consumption (kWh):", value=float(value), min_value=0.0, key=f"energy_value_{key}")
+            if new_name != key:
+                st.session_state.energy_data[new_name] = st.session_state.energy_data.pop(key)
+            st.session_state.energy_data[new_name] = new_consumption
 
-    energy_to_delete = []
-    for key in st.session_state.energy_data.keys():
-        if st.button(f"Remove {key}", key=f"remove_energy_{key}"):
-            energy_to_delete.append(key)
+        energy_to_delete = []
+        for key in st.session_state.energy_data.keys():
+            if st.button(f"Remove {key}", key=f"remove_energy_{key}"):
+                energy_to_delete.append(key)
 
-    for item in energy_to_delete:
-        del st.session_state.energy_data[item]
+        for item in energy_to_delete:
+            del st.session_state.energy_data[item]
 
-    st.markdown("**Add New Energy Equipment**")
-    new_energy_name = st.text_input("New Equipment Name:", key="new_energy_name")
-    new_energy_value = st.number_input("Energy Consumption (kWh):", min_value=0.0, key="new_energy_value")
-    if st.button("Add Energy Equipment", key="add_energy"):
-        if new_energy_name and new_energy_name not in st.session_state.energy_data:
-            st.session_state.energy_data[new_energy_name] = new_energy_value
-            st.success(f"Added new energy equipment: {new_energy_name}")
-        else:
-            st.error("Energy equipment already exists or name is invalid!")
+        st.markdown("**Add New Energy Equipment**")
+        new_energy_name = st.text_input("New Equipment Name:", key="new_energy_name")
+        new_energy_value = st.number_input("Energy Consumption (kWh):", min_value=0.0, key="new_energy_value")
+        if st.button("Add Energy Equipment", key="add_energy"):
+            if new_energy_name and new_energy_name not in st.session_state.energy_data:
+                st.session_state.energy_data[new_energy_name] = new_energy_value
+                st.success(f"Added new energy equipment: {new_energy_name}")
+            else:
+                st.error("Energy equipment already exists or name is invalid!")
 
-    # Update energy cost dynamically
-    st.session_state.energy_cost = st.number_input("Cost per kWh (EUR):", value=float(st.session_state.energy_cost), min_value=0.0)
-    model.energy_cost = st.session_state.energy_cost
-    model.energy_consumption = st.session_state.energy_data
-
+        # Update energy cost dynamically
+        st.session_state.energy_cost = st.number_input("Cost per kWh (EUR):", value=float(st.session_state.energy_cost), min_value=0.0)
+        model.energy_cost = st.session_state.energy_cost
+        model.energy_consumption = st.session_state.energy_data
 
         # General OpEx Configuration
-    st.markdown("### General OpEx Configuration")
-    opex_to_delete = []
-    for key, value in st.session_state.opex_data.items():
+        st.markdown("### General OpEx Configuration")
+        opex_to_delete = []
+        for key, value in st.session_state.opex_data.items():
             if key != "Energy":
                 col1, col2, col3 = st.columns([3, 2, 1])
                 with col1:
@@ -259,6 +258,7 @@ def economic_kpis():
                 if new_name != key:
                     st.session_state.opex_data[new_name] = st.session_state.opex_data.pop(key)
                 st.session_state.opex_data[new_name] = new_cost
+
         for item in opex_to_delete:
             del st.session_state.opex_data[item]
 
