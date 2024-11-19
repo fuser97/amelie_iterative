@@ -104,459 +104,357 @@ model = AmelieEconomicModel()
 # Streamlit App
 st.title("Amelie Economic Model Configurator")
 
-# General Assumptions
-st.subheader("General Assumptions")
-st.markdown("""
-- Pilot project sized for 10 kg BM per batch.
-- No infrastructure costs.
-- Process includes BM pre-treatment, microwave-assisted thermal treatment, leaching in water, precipitation for lithium recovery, secondary drying, leaching in acid (malic acid and hydrogen peroxide), and wastewater treatment.
-- Energy cost calculated dynamically based on kWh per machine.
-- Labor includes one operator per batch.
-- Maintenance and disposal are estimated.
-""")
-# Add a section for the recycling process flowchart
-st.subheader("Recycling Process Flowchart")
+def economic_kpis():
+    # Economic KPIs (CapEx, OpEx, etc.)
+    st.title("Economic KPIs")
 
-# Display the flowchart image
-flowchart_path = "processo.png"  # Adjust the path if the image is in a subfolder
-st.image(flowchart_path, caption="Recycling Process Flowchart (UNIBS) (from Rallo thesis)", use_column_width=True)
+    # General Assumptions
+    st.subheader("General Assumptions")
+    st.markdown("""
+    - Pilot project sized for 10 kg BM per batch.
+    - No infrastructure costs.
+    - Process includes BM pre-treatment, microwave-assisted thermal treatment, leaching in water, precipitation for lithium recovery, secondary drying, leaching in acid (malic acid and hydrogen peroxide), and wastewater treatment.
+    - Energy cost calculated dynamically based on kWh per machine.
+    - Labor includes one operator per batch.
+    - Maintenance and disposal are estimated.
+    """)
 
-# Configure Black Mass
-st.subheader("Configure Black Mass")
-model.black_mass = st.number_input("Mass of Black Mass (kg)", min_value=1, value=model.black_mass)
+    # Display the flowchart image
+    st.subheader("Recycling Process Flowchart")
+    flowchart_path = "processo.png"  # Adjust the path if the image is in a subfolder
+    st.image(flowchart_path, caption="Recycling Process Flowchart (UNIBS) (from Rallo thesis)", use_column_width=True)
 
-# Manage CapEx
-st.subheader("CapEx Configuration")
+    # Configure Black Mass
+    st.subheader("Configure Black Mass")
+    model.black_mass = st.number_input("Mass of Black Mass (kg):", min_value=1, value=model.black_mass)
 
-# Dynamic CapEx input form
-if "capex_data" not in st.session_state:
-    st.session_state.capex_data = model.capex.copy()
+    # Manage CapEx
+    st.subheader("CapEx Configuration")
+    if "capex_data" not in st.session_state:
+        st.session_state.capex_data = model.capex.copy()
 
-# Display existing CapEx items with editable inputs
-capex_to_delete = []
-for key in list(st.session_state.capex_data.keys()):
-    col1, col2, col3 = st.columns([3, 2, 1])
-    with col1:
-        new_name = st.text_input(f"Edit Name: {key}", value=key, key=f"capex_name_{key}")
-    with col2:
-        new_cost = st.number_input(
-            f"Edit Cost for {key} (EUR):",
-            value=float(st.session_state.capex_data[key]),  # Ensure value is float
-            min_value=0.0,
-            key=f"capex_cost_{key}"
-        )
-    with col3:
-        if st.button("Remove", key=f"remove_capex_{key}"):
-            capex_to_delete.append(key)
-    if new_name != key:
-        st.session_state.capex_data[new_name] = st.session_state.capex_data.pop(key)
-    st.session_state.capex_data[new_name] = new_cost
+    capex_to_delete = []
+    for key in list(st.session_state.capex_data.keys()):
+        col1, col2, col3 = st.columns([3, 2, 1])
+        with col1:
+            new_name = st.text_input(f"Edit Name: {key}", value=key, key=f"capex_name_{key}")
+        with col2:
+            new_cost = st.number_input(
+                f"Edit Cost for {key} (EUR):",
+                value=float(st.session_state.capex_data[key]),
+                min_value=0.0,
+                key=f"capex_cost_{key}"
+            )
+        with col3:
+            if st.button("Remove", key=f"remove_capex_{key}"):
+                capex_to_delete.append(key)
+        if new_name != key:
+            st.session_state.capex_data[new_name] = st.session_state.capex_data.pop(key)
+        st.session_state.capex_data[new_name] = new_cost
 
-# Remove items marked for deletion
-for item in capex_to_delete:
-    del st.session_state.capex_data[item]
+    for item in capex_to_delete:
+        del st.session_state.capex_data[item]
 
-# Add new CapEx item
-st.markdown("**Add New CapEx Item**")
-new_capex_name = st.text_input("New CapEx Name:", key="new_capex_name")
-new_capex_cost = st.number_input("New CapEx Cost (EUR):", min_value=0.0, key="new_capex_cost")
-if st.button("Add CapEx", key="add_capex"):
-    if new_capex_name and new_capex_name not in st.session_state.capex_data:
-        st.session_state.capex_data[new_capex_name] = new_capex_cost
-        st.success(f"Added new CapEx item: {new_capex_name}")
-    elif new_capex_name in st.session_state.capex_data:
-        st.error(f"The CapEx item '{new_capex_name}' already exists!")
+    st.markdown("**Add New CapEx Item**")
+    new_capex_name = st.text_input("New CapEx Name:", key="new_capex_name")
+    new_capex_cost = st.number_input("New CapEx Cost (EUR):", min_value=0.0, key="new_capex_cost")
+    if st.button("Add CapEx", key="add_capex"):
+        if new_capex_name and new_capex_name not in st.session_state.capex_data:
+            st.session_state.capex_data[new_capex_name] = new_capex_cost
+            st.success(f"Added new CapEx item: {new_capex_name}")
+        elif new_capex_name in st.session_state.capex_data:
+            st.error(f"The CapEx item '{new_capex_name}' already exists!")
 
-model.capex = st.session_state.capex_data
+    model.capex = st.session_state.capex_data
 
-# Manage OpEx
-st.subheader("OpEx Configuration")
+    # Manage OpEx
+    st.subheader("OpEx Configuration")
+    if "opex_data" not in st.session_state:
+        st.session_state.opex_data = model.opex.copy()
 
-# Dynamic OpEx input form
-if "opex_data" not in st.session_state:
-    st.session_state.opex_data = model.opex.copy()
+    opex_to_delete = []
+    for key in list(st.session_state.opex_data.keys()):
+        col1, col2, col3 = st.columns([3, 2, 1])
+        with col1:
+            new_name = st.text_input(f"Edit Name: {key}", value=key, key=f"opex_name_{key}")
+        with col2:
+            new_cost = st.number_input(
+                f"Edit Cost for {key} (EUR/batch):",
+                value=float(st.session_state.opex_data[key]),
+                min_value=0.0,
+                key=f"opex_cost_{key}"
+            )
+        with col3:
+            if st.button("Remove", key=f"remove_opex_{key}"):
+                opex_to_delete.append(key)
+        if new_name != key:
+            st.session_state.opex_data[new_name] = st.session_state.opex_data.pop(key)
+        st.session_state.opex_data[new_name] = new_cost
 
-# Display existing OpEx items with editable inputs
-opex_to_delete = []
-for key in list(st.session_state.opex_data.keys()):
-    col1, col2, col3 = st.columns([3, 2, 1])
-    with col1:
-        new_name = st.text_input(f"Edit Name: {key}", value=key, key=f"opex_name_{key}")
-    with col2:
-        new_cost = st.number_input(
-            f"Edit Cost for {key} (EUR/batch):",
-            value=float(st.session_state.opex_data[key]),  # Ensure value is float
-            min_value=0.0,
-            key=f"opex_cost_{key}"
-        )
-    with col3:
-        if st.button("Remove", key=f"remove_opex_{key}"):
-            opex_to_delete.append(key)
-    if new_name != key:
-        st.session_state.opex_data[new_name] = st.session_state.opex_data.pop(key)
-    st.session_state.opex_data[new_name] = new_cost
+    for item in opex_to_delete:
+        del st.session_state.opex_data[item]
 
-# Remove items marked for deletion
-for item in opex_to_delete:
-    del st.session_state.opex_data[item]
+    st.markdown("**Add New OpEx Item**")
+    new_opex_name = st.text_input("New OpEx Name:", key="new_opex_name")
+    new_opex_cost = st.number_input("New OpEx Cost (EUR/batch):", min_value=0.0, key="new_opex_cost")
+    if st.button("Add OpEx", key="add_opex"):
+        if new_opex_name and new_opex_name not in st.session_state.opex_data:
+            st.session_state.opex_data[new_opex_name] = new_opex_cost
+            st.success(f"Added new OpEx item: {new_opex_name}")
+        elif new_opex_name in st.session_state.opex_data:
+            st.error(f"The OpEx item '{new_opex_name}' already exists!")
 
-# Add new OpEx item
-st.markdown("**Add New OpEx Item**")
-new_opex_name = st.text_input("New OpEx Name:", key="new_opex_name")
-new_opex_cost = st.number_input("New OpEx Cost (EUR/batch):", min_value=0.0, key="new_opex_cost")
-if st.button("Add OpEx", key="add_opex"):
-    if new_opex_name and new_opex_name not in st.session_state.opex_data:
-        st.session_state.opex_data[new_opex_name] = new_opex_cost
-        st.success(f"Added new OpEx item: {new_opex_name}")
-    elif new_opex_name in st.session_state.opex_data:
-        st.error(f"The OpEx item '{new_opex_name}' already exists!")
+    model.opex = st.session_state.opex_data
 
-model.opex = st.session_state.opex_data
+    # Manage Energy Consumption
+    st.subheader("Energy Consumption Configuration")
+    if "energy_data" not in st.session_state:
+        st.session_state.energy_data = model.energy_consumption.copy()
 
+    energy_to_delete = []
+    for key in list(st.session_state.energy_data.keys()):
+        col1, col2, col3 = st.columns([3, 2, 1])
+        with col1:
+            new_name = st.text_input(f"Edit Name: {key}", value=key, key=f"energy_name_{key}")
+        with col2:
+            new_consumption = st.number_input(
+                f"Edit Consumption for {key} (kWh):",
+                value=float(st.session_state.energy_data[key]),
+                min_value=0.0,
+                key=f"energy_consumption_{key}"
+            )
+        with col3:
+            if st.button("Remove", key=f"remove_energy_{key}"):
+                energy_to_delete.append(key)
+        if new_name != key:
+            st.session_state.energy_data[new_name] = st.session_state.energy_data.pop(key)
+        st.session_state.energy_data[new_name] = new_consumption
 
+    for item in energy_to_delete:
+        del st.session_state.energy_data[item]
 
+    st.markdown("**Add New Energy Equipment**")
+    new_energy_name = st.text_input("New Equipment Name for Energy Consumption:", key="new_energy_name")
+    new_energy_consumption = st.number_input(
+        "New Equipment Energy Consumption (kWh):",
+        min_value=0.0,
+        key="new_energy_consumption"
+    )
+    if st.button("Add Energy Equipment", key="add_energy"):
+        if new_energy_name and new_energy_name not in st.session_state.energy_data:
+            st.session_state.energy_data[new_energy_name] = new_energy_consumption
+            st.success(f"Added new energy equipment: {new_energy_name}")
+        elif new_energy_name in st.session_state.energy_data:
+            st.error(f"The energy equipment '{new_energy_name}' already exists!")
 
-# Manage Energy Consumption
-st.subheader("Energy Consumption Configuration")
+    model.energy_consumption = st.session_state.energy_data
 
-# Dynamic Energy Consumption input form
-if "energy_data" not in st.session_state:
-    st.session_state.energy_data = model.energy_consumption.copy()
+    # Display Results
+    st.subheader("Results")
+    capex_total, opex_total = model.calculate_totals()
+    st.write(f"**Total CapEx:** {capex_total} EUR")
+    st.write(f"**Total OpEx (including energy):** {opex_total} EUR/batch")
 
-# Display existing energy consumption items with editable inputs
-energy_to_delete = []
-for key in list(st.session_state.energy_data.keys()):
-    col1, col2, col3 = st.columns([3, 2, 1])
-    with col1:
-        new_name = st.text_input(f"Edit Name: {key}", value=key, key=f"energy_name_{key}")
-    with col2:
-        new_consumption = st.number_input(
-            f"Edit Consumption for {key} (kWh):",
-            value=float(st.session_state.energy_data[key]),  # Ensure value is float
-            min_value=0.0,
-            key=f"energy_consumption_{key}"
-        )
-    with col3:
-        if st.button("Remove", key=f"remove_energy_{key}"):
-            energy_to_delete.append(key)
-    if new_name != key:
-        st.session_state.energy_data[new_name] = st.session_state.energy_data.pop(key)
-    st.session_state.energy_data[new_name] = new_consumption
+    # CapEx Chart
+    st.subheader("CapEx Breakdown")
+    capex_chart_buf = model.generate_pie_chart(model.capex, "CapEx Breakdown")
+    st.image(capex_chart_buf, caption="CapEx Pie Chart", use_column_width=True)
 
-# Remove items marked for deletion
-for item in energy_to_delete:
-    del st.session_state.energy_data[item]
+    # OpEx Chart
+    st.subheader("OpEx Breakdown")
+    opex_chart_buf = model.generate_pie_chart(model.opex, "OpEx Breakdown")
+    st.image(opex_chart_buf, caption="OpEx Pie Chart", use_column_width=True)
 
-# Add new energy consumption item
-st.markdown("**Add New Energy Equipment**")
-new_energy_name = st.text_input("New Equipment Name for Energy Consumption:", key="new_energy_name")
-new_energy_consumption = st.number_input(
-    "New Equipment Energy Consumption (kWh):",
-    min_value=0.0,
-    key="new_energy_consumption"
-)
-if st.button("Add Energy Equipment", key="add_energy"):
-    if new_energy_name and new_energy_name not in st.session_state.energy_data:
-        st.session_state.energy_data[new_energy_name] = new_energy_consumption
-        st.success(f"Added new energy equipment: {new_energy_name}")
-    elif new_energy_name in st.session_state.energy_data:
-        st.error(f"The energy equipment '{new_energy_name}' already exists!")
+    # Display tables
+    st.subheader("CapEx Table")
+    capex_table = model.generate_table(model.capex)
+    st.table(capex_table)
 
-# Save the updated energy consumption configuration
-model.energy_consumption = st.session_state.energy_data
+    st.subheader("OpEx Table")
+    opex_table = model.generate_table(model.opex)
+    st.table(opex_table)
 
 
-# Display Results
-st.subheader("Results")
-capex_total, opex_total = model.calculate_totals()
-st.write(f"**Total CapEx:** {capex_total} EUR")
-st.write(f"**Total OpEx (including energy):** {opex_total} EUR/batch")
+import pandas as pd
+import streamlit as st
 
-# CapEx Chart
-st.subheader("CapEx Breakdown")
-capex_chart_buf = model.generate_pie_chart(model.capex, "CapEx Breakdown")
-st.image(capex_chart_buf, caption="CapEx Pie Chart", use_column_width=True)
+def technical_kpis():
+    st.title("Technical KPIs: Efficiency and Solid/Liquid Ratios")
 
-# OpEx Chart
-st.subheader("OpEx Breakdown")
-opex_chart_buf = model.generate_pie_chart(model.opex, "OpEx Breakdown")
-st.image(opex_chart_buf, caption="OpEx Pie Chart", use_column_width=True)
+    # Define default material composition
+    if "composition" not in st.session_state:
+        st.session_state.composition = {'Li': 7.0, 'Co': 15.0, 'Ni': 10.0, 'Mn': 8.0}  # Default percentages
 
-# Display tables
-st.subheader("CapEx Table")
-capex_table = model.generate_table(model.capex)
-st.table(capex_table)
+    # Display and allow the user to edit percentages of materials in BM
+    st.markdown("### Material Composition in Black Mass")
+    total_percentage = 0  # Track the sum of percentages
+    updated_composition = {}
 
-st.subheader("OpEx Table")
-opex_table = model.generate_table(model.opex)
-st.table(opex_table)
+    for material, percentage in list(st.session_state.composition.items()):
+        col1, col2, col3 = st.columns([2, 1, 1])
+        with col1:
+            # Allow editing of material names
+            new_material = st.text_input(f"Edit Material Name ({material})", value=material, key=f"edit_material_{material}")
+        with col2:
+            # Allow editing of material percentages
+            new_percentage = st.number_input(
+                f"Percentage of {material} in BM (%)",
+                min_value=0.0,
+                max_value=100.0,
+                value=percentage,
+                key=f"edit_percentage_{material}"
+            )
+        with col3:
+            # Option to remove material
+            if st.button(f"Remove {material}", key=f"remove_material_{material}"):
+                st.session_state.composition.pop(material, None)
 
-# Technical KPI: Efficiency
-st.subheader("Technical KPI: Efficiency")
+        # Save updated composition
+        updated_composition[new_material] = new_percentage
+        total_percentage += new_percentage
 
-# Define default material composition
-if "composition" not in st.session_state:
-    st.session_state.composition = {'Li': 7.0, 'Co': 15.0, 'Ni': 10.0, 'Mn': 8.0}  # Default percentages
+    # Add a new material dynamically
+    st.markdown("**Add New Material**")
+    new_material_name = st.text_input("New Material Name", key="new_material_name")
+    new_material_percentage = st.number_input("New Material Percentage (%)", min_value=0.0, max_value=100.0, key="new_material_percentage")
+    if st.button("Add Material"):
+        if new_material_name and new_material_name not in updated_composition:
+            updated_composition[new_material_name] = new_material_percentage
+            st.success(f"Added new material: {new_material_name}")
+        elif new_material_name in updated_composition:
+            st.error(f"Material {new_material_name} already exists!")
 
-# Display and allow the user to edit percentages of materials in BM
-st.markdown("### Material Composition in Black Mass")
-total_percentage = 0  # Track the sum of percentages
-updated_composition = {}
+    # Update session state with new composition
+    st.session_state.composition = updated_composition
 
-for material, percentage in list(st.session_state.composition.items()):
-    col1, col2, col3 = st.columns([2, 1, 1])
-    with col1:
-        # Allow editing of material names
-        new_material = st.text_input(f"Edit Material Name ({material})", value=material, key=f"edit_material_{material}")
-    with col2:
-        # Allow editing of material percentages
-        new_percentage = st.number_input(
-            f"Percentage of {material} in BM (%)",
+    # Warn if total percentage exceeds 100
+    if total_percentage > 100:
+        st.warning(f"Total material composition exceeds 100% (currently {total_percentage:.2f}%). Adjust values accordingly.")
+    elif total_percentage < 100:
+        st.info(f"Total material composition is below 100% (currently {total_percentage:.2f}%).")
+
+    # Efficiency Calculation
+    st.markdown("### Recovered Mass and Efficiency Calculation")
+
+    # Inputs for recovered mass
+    recovered_masses = {}
+    for material in st.session_state.composition:
+        recovered_mass = st.number_input(
+            f"Recovered Mass of {material} (kg):",
             min_value=0.0,
             max_value=100.0,
-            value=percentage,
-            key=f"edit_percentage_{material}"
+            step=0.1,
+            key=f"recovered_mass_{material}"
         )
-    with col3:
-        # Option to remove material
-        if st.button(f"Remove {material}", key=f"remove_material_{material}"):
-            st.session_state.composition.pop(material, None)
+        recovered_masses[material] = recovered_mass
 
-    # Save updated composition
-    updated_composition[new_material] = new_percentage
-    total_percentage += new_percentage
+    # Compute efficiency per material
+    efficiencies = {}
+    total_black_mass = st.sidebar.number_input("Total Black Mass (kg):", min_value=0.1, value=10.0, step=0.1, key="total_black_mass")
+    total_recovered_mass = 0  # Track total recovered mass
 
-# Add a new material dynamically
-st.markdown("**Add New Material**")
-new_material_name = st.text_input("New Material Name", key="new_material_name")
-new_material_percentage = st.number_input("New Material Percentage (%)", min_value=0.0, max_value=100.0, key="new_material_percentage")
-if st.button("Add Material"):
-    if new_material_name and new_material_name not in updated_composition:
-        updated_composition[new_material_name] = new_material_percentage
-        st.success(f"Added new material: {new_material_name}")
-    elif new_material_name in updated_composition:
-        st.error(f"Material {new_material_name} already exists!")
+    for material, percentage in st.session_state.composition.items():
+        initial_mass = total_black_mass * (percentage / 100)
+        recovered_mass = recovered_masses.get(material, 0.0)
+        efficiency = (recovered_mass / initial_mass) * 100 if initial_mass > 0 else 0.0
+        efficiencies[material] = efficiency
+        total_recovered_mass += recovered_mass
 
-# Update session state with new composition
-st.session_state.composition = updated_composition
+    # Compute overall efficiency
+    overall_efficiency = (total_recovered_mass / total_black_mass) * 100
 
-# Warn if total percentage exceeds 100
-if total_percentage > 100:
-    st.warning(f"Total material composition exceeds 100% (currently {total_percentage:.2f}%). Adjust values accordingly.")
-elif total_percentage < 100:
-    st.info(f"Total material composition is below 100% (currently {total_percentage:.2f}%).")
+    # Display Results
+    st.write(f"**Overall Process Efficiency:** {overall_efficiency:.2f}%")
+    st.write("**Efficiency and Recovered Mass per Material:**")
+    result_df = pd.DataFrame({
+        "Material": list(st.session_state.composition.keys()),
+        "Initial Mass in BM (kg)": [total_black_mass * (p / 100) for p in st.session_state.composition.values()],
+        "Recovered Mass (kg)": [recovered_masses.get(m, 0.0) for m in st.session_state.composition.keys()],
+        "Efficiency (%)": [efficiencies.get(m, 0.0) for m in st.session_state.composition.keys()]
+    })
+    st.table(result_df)
 
-# Efficiency Calculation
-st.markdown("### Recovered Mass and Efficiency Calculation")
+    # Solid/Liquid Ratios Section
+    st.markdown("## Solid/Liquid Ratios for Each Phase")
 
-# Inputs for recovered mass
-recovered_masses = {}
-for material in st.session_state.composition:
-    recovered_mass = st.number_input(
-        f"Recovered Mass of {material} (kg):",
-        min_value=0.0,
-        max_value=100.0,
-        step=0.1,
-        key=f"recovered_mass_{material}"
-    )
-    recovered_masses[material] = recovered_mass
-
-# Compute efficiency per material
-efficiencies = {}
-total_black_mass = model.black_mass
-total_recovered_mass = 0  # Track total recovered mass
-
-for material, percentage in st.session_state.composition.items():
-    initial_mass = total_black_mass * (percentage / 100)
-    recovered_mass = recovered_masses.get(material, 0.0)
-    efficiency = (recovered_mass / initial_mass) * 100 if initial_mass > 0 else 0.0
-    efficiencies[material] = efficiency
-    total_recovered_mass += recovered_mass
-
-# Compute overall efficiency
-overall_efficiency = (total_recovered_mass / total_black_mass) * 100
-
-# Display Results
-st.write(f"**Overall Process Efficiency:** {overall_efficiency:.2f}%")
-st.write("**Efficiency and Recovered Mass per Material:**")
-result_df = pd.DataFrame({
-    "Material": list(st.session_state.composition.keys()),
-    "Initial Mass in BM (kg)": [total_black_mass * (p / 100) for p in st.session_state.composition.values()],
-    "Recovered Mass (kg)": [recovered_masses.get(m, 0.0) for m in st.session_state.composition.keys()],
-    "Efficiency (%)": [efficiencies.get(m, 0.0) for m in st.session_state.composition.keys()]
-})
-st.table(result_df)
-
-
-import streamlit as st
-import pandas as pd
-
-# Initialize default parameters for phases
-def initialize_sl_tool():
+    # Initialize default parameters for phases
     if "phases" not in st.session_state:
         st.session_state.phases = {
             "Leaching in Water": {"liquids": [{"type": "Water", "volume": 20.0}], "mass": 5.0},
             "Leaching in Acid": {"liquids": [{"type": "Malic Acid", "volume": 5.0}, {"type": "Water", "volume": 2.0}], "mass": 5.0}
         }
-    if "sl_feedback_thresholds" not in st.session_state:
-        st.session_state.sl_feedback_thresholds = {"low": 0.1, "high": 0.6}
 
-# Initialize session state
-initialize_sl_tool()
+    phases = st.session_state.phases
+    updated_phases = {}
 
-st.title("Solid/Liquid Ratio Management with Phase-Specific Masses and Multiple Liquids")
+    # Display and allow editing of each phase
+    for phase_name, phase_data in phases.items():
+        st.subheader(f"Phase: {phase_name}")
+        liquids = phase_data.get("liquids", [])
+        updated_liquids = []
 
-# Input: Total Black Mass
-st.sidebar.header("General Inputs")
-total_black_mass = st.sidebar.number_input("Total Black Mass (kg):", min_value=0.1, value=10.0, step=0.1)
-
-# Dynamic Feedback Thresholds
-st.sidebar.header("Set Feedback Thresholds")
-low_threshold = st.sidebar.number_input(
-    "Low Threshold for S/L Ratio:", min_value=0.0, max_value=1.0, value=st.session_state.sl_feedback_thresholds["low"], step=0.01
-)
-high_threshold = st.sidebar.number_input(
-    "High Threshold for S/L Ratio:", min_value=0.0, max_value=2.0, value=st.session_state.sl_feedback_thresholds["high"], step=0.01
-)
-
-# Update thresholds in session state
-st.session_state.sl_feedback_thresholds["low"] = low_threshold
-st.session_state.sl_feedback_thresholds["high"] = high_threshold
-
-# Manage Process Phases Dynamically
-st.header("Manage Process Phases")
-phases = st.session_state.phases
-updated_phases = {}
-
-# Display existing phases
-for phase_name, phase_data in phases.items():
-    st.subheader(f"Phase: {phase_name}")
-    liquids = phase_data.get("liquids", [])
-    updated_liquids = []
-
-    # Phase-specific mass input
-    phase_mass = st.number_input(
-        f"Mass for {phase_name} (kg):", min_value=0.0, max_value=total_black_mass, value=phase_data.get("mass", 0.0), step=0.1, key=f"mass_{phase_name}"
-    )
-
-    for idx, liquid in enumerate(liquids):
-        col1, col2, col3 = st.columns([2, 1, 1])
-        with col1:
-            liquid_type = st.text_input(
-                f"Liquid Type ({liquid['type']}):", value=liquid["type"], key=f"liquid_type_{phase_name}_{idx}"
-            )
-        with col2:
-            liquid_volume = st.number_input(
-                f"Volume ({liquid['type']}, L):", min_value=0.0, value=liquid["volume"], step=0.1, key=f"volume_{phase_name}_{idx}"
-            )
-        with col3:
-            if st.button(f"Remove {liquid['type']}", key=f"remove_{phase_name}_{idx}"):
-                continue  # Skip adding this liquid to updated list
-
-        updated_liquids.append({"type": liquid_type, "volume": liquid_volume})
-
-    # Add a new liquid to this phase
-    st.write(f"Add a new liquid to {phase_name}:")
-    col1, col2, col3 = st.columns([2, 1, 1])
-    with col1:
-        new_liquid_type = st.text_input(f"New Liquid Type for {phase_name}:", key=f"new_liquid_type_{phase_name}")
-    with col2:
-        new_liquid_volume = st.number_input(
-            f"New Liquid Volume (L) for {phase_name}:", min_value=0.0, key=f"new_liquid_volume_{phase_name}"
+        # Phase-specific mass input
+        phase_mass = st.number_input(
+            f"Mass for {phase_name} (kg):", min_value=0.0, value=phase_data.get("mass", 0.0), step=0.1, key=f"mass_{phase_name}"
         )
-    with col3:
-        if st.button(f"Add Liquid to {phase_name}", key=f"add_liquid_{phase_name}"):
-            if new_liquid_type and new_liquid_volume > 0:
-                updated_liquids.append({"type": new_liquid_type, "volume": new_liquid_volume})
-                st.success(f"Added {new_liquid_type} to {phase_name}.")
-            else:
-                st.error("Please provide a valid liquid type and volume.")
 
-    updated_phases[phase_name] = {"liquids": updated_liquids, "mass": phase_mass}
+        for idx, liquid in enumerate(liquids):
+            col1, col2, col3 = st.columns([2, 1, 1])
+            with col1:
+                liquid_type = st.text_input(
+                    f"Liquid Type ({liquid['type']}):", value=liquid["type"], key=f"liquid_type_{phase_name}_{idx}"
+                )
+            with col2:
+                liquid_volume = st.number_input(
+                    f"Volume ({liquid['type']}, L):", min_value=0.0, value=liquid["volume"], step=0.1, key=f"volume_{phase_name}_{idx}"
+                )
+            with col3:
+                if st.button(f"Remove {liquid['type']}", key=f"remove_{phase_name}_{idx}"):
+                    continue  # Skip adding this liquid to updated list
 
-# Add a new phase
-st.write("### Add New Phase")
-col1, col2 = st.columns([3, 1])
-with col1:
-    new_phase_name = st.text_input("New Phase Name:", key="new_phase_name")
-with col2:
-    if st.button("Add Phase", key="add_phase"):
-        if new_phase_name and new_phase_name not in updated_phases:
-            updated_phases[new_phase_name] = {"liquids": [], "mass": 0.0}
-            st.success(f"Phase '{new_phase_name}' added successfully!")
-        elif new_phase_name in updated_phases:
-            st.error(f"Phase '{new_phase_name}' already exists. Please choose a different name.")
-        else:
-            st.error("Phase name cannot be empty.")
+            updated_liquids.append({"type": liquid_type, "volume": liquid_volume})
 
-# Save updated phases to session state
-st.session_state.phases = updated_phases
+        updated_phases[phase_name] = {"liquids": updated_liquids, "mass": phase_mass}
 
-# Calculate Solid/Liquid Ratios
-st.header("Solid/Liquid Ratios for Each Phase and Liquid Type")
-sl_results = []
-for phase_name, phase_data in st.session_state.phases.items():
-    phase_mass = phase_data["mass"]
-    phase_liquids = phase_data["liquids"]
-    total_liquid_volume = sum(liquid["volume"] for liquid in phase_liquids)
-    
-    for liquid in phase_liquids:
-        liquid_ratio = phase_mass / liquid["volume"] if liquid["volume"] > 0 else 0
+    # Save updated phases
+    st.session_state.phases = updated_phases
+
+    # Calculate S/L Ratios
+    sl_results = []
+    for phase_name, phase_data in st.session_state.phases.items():
+        phase_mass = phase_data["mass"]
+        phase_liquids = phase_data["liquids"]
+        total_liquid_volume = sum(liquid["volume"] for liquid in phase_liquids)
+
+        for liquid in phase_liquids:
+            liquid_ratio = phase_mass / liquid["volume"] if liquid["volume"] > 0 else 0
+            sl_results.append({
+                "Phase": phase_name,
+                "Liquid Type": liquid["type"],
+                "Phase Mass (kg)": phase_mass,
+                "Liquid Volume (L)": liquid["volume"],
+                "S/L Ratio": liquid_ratio
+            })
+
+        overall_ratio = phase_mass / total_liquid_volume if total_liquid_volume > 0 else 0
         sl_results.append({
             "Phase": phase_name,
-            "Liquid Type": liquid["type"],
+            "Liquid Type": "Overall",
             "Phase Mass (kg)": phase_mass,
-            "Liquid Volume (L)": liquid["volume"],
-            "S/L Ratio (Per Liquid)": liquid_ratio
+            "Liquid Volume (L)": total_liquid_volume,
+            "S/L Ratio": overall_ratio
         })
 
-    overall_sl_ratio = phase_mass / total_liquid_volume if total_liquid_volume > 0 else 0
-    sl_results.append({
-        "Phase": phase_name,
-        "Liquid Type": "Overall",
-        "Phase Mass (kg)": phase_mass,
-        "Liquid Volume (L)": total_liquid_volume,
-        "S/L Ratio (Per Liquid)": overall_sl_ratio
-    })
+    # Display Results
+    sl_df = pd.DataFrame(sl_results)
+    st.table(sl_df)
 
-# Display Detailed Table
-st.write("**S/L Ratio Results for Each Phase and Liquid Type:**")
-sl_df = pd.DataFrame(sl_results)
 
-# Ensure consistent phase grouping without removing phase names
-st.table(sl_df)
-
-# Calculate Overall Totals
-st.write("**Summary of Total Solid/Liquid Ratios Across All Phases:**")
-
-# Total mass and total liquid volume
-total_mass = sl_df[sl_df["Liquid Type"] == "Overall"]["Phase Mass (kg)"].sum()
-total_liquid_volume = sl_df[sl_df["Liquid Type"] == "Overall"]["Liquid Volume (L)"].sum()
-overall_sl_ratio = total_mass / total_liquid_volume if total_liquid_volume > 0 else 0
-
-# Total volume by liquid type
-total_by_liquid_type = sl_df[sl_df["Liquid Type"] != "Overall"].groupby("Liquid Type").agg({
-    "Phase Mass (kg)": "sum",
-    "Liquid Volume (L)": "sum"
-}).reset_index()
-
-# Add calculated S/L ratio for each liquid type
-total_by_liquid_type["S/L Ratio"] = total_by_liquid_type["Phase Mass (kg)"] / total_by_liquid_type["Liquid Volume (L)"]
-
-# Summary Table
-summary_data = {
-    "Total Mass (kg)": [total_mass],
-    "Total Liquid Volume (L)": [total_liquid_volume],
-    "Overall S/L Ratio": [overall_sl_ratio]
-}
-summary_df = pd.DataFrame(summary_data)
-
-st.write("**Overall Ratios:**")
-st.table(summary_df)
-
-st.write("**Ratios by Liquid Type Across All Phases:**")
-st.table(total_by_liquid_type)
-
+# Render the selected page
+if page == "Economic KPIs":
+    economic_kpis()
+elif page == "Technical KPIs":
+    technical_kpis()
 
 
 
