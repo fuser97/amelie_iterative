@@ -5,6 +5,17 @@ import streamlit as st
 import pandas as pd
 import io
 
+# Configure the page layout
+st.experimental_set_page_config(
+    page_title="Amelie KPI Tool",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# Sidebar navigation
+st.sidebar.title("Navigation")
+page = st.sidebar.radio("Select a Page:", ["Economic KPIs", "Technical KPIs"])
+
 
 class AmelieEconomicModel:
     def __init__(self):
