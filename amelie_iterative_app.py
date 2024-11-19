@@ -226,6 +226,169 @@ def economic_kpis():
         opex_table = model.generate_table(st.session_state.opex_data)
         st.table(opex_table)
 
+import pandas as pd
+import streamlit as st
+
+def technical_kpis():
+    st.title("Technical KPIs: Efficiency and Solid/Liquid Ratios")
+
+    # Add a section dropdown
+    sections = ["Material Composition", "Efficiency Calculation", "Solid/Liquid Ratios"]
+    selected_section = st.selectbox("Jump to Section:", sections)
+
+    # Material Composition Section
+    if selected_section == "Material Composition":
+        st.subheader("Material Composition in Black Mass")
+        if "composition" not in st.session_state:
+            st.session_state.composition = {'Li': 7.0, 'Co': 15.0, 'Ni': 10.0, 'Mn': 8.0}  # Default percentages
+
+        updated_composition = {}
+        total_percentage = 0
+
+        for material, percentage in list(st.session_state.composition.items()):
+            col1, col2, col3 = st.columns([2, 1, 1])
+            with col1:
+                new_material = st.text_input(f"Edit Material Name ({material})", value=material, key=f"edit_material_{material}")
+            with col2:
+                new_percentage = st.number_input(
+                    f"Percentage of {material} in BM (%)",
+                    min_value=0.0,
+                    max_value=100.0,
+                    value=percentage,
+                    key=f"edit_percentage_{material}"
+                )
+            with col3:
+                if st.button(f"Remove {material}", key=f"remove_material_{material}"):
+                    st.session_state.composition.pop(material, None)
+
+            updated_composition[new_material] = new_percentage
+            total_percentage += new_percentage
+
+        st.markdown("**Add New Material**")
+        new_material_name = st.text_input("New Material Name", key="new_material_name")
+        new_material_percentage = st.number_input("New Material Percentage (%)", min_value=0.0, max_value=100.0, key="new_material_percentage")
+        if st.button("Add Material"):
+            if new_material_name and new_material_name not in updated_composition:
+                updated_composition[new_material_name] = new_material_percentage
+                st.success(f"Added new material: {new_material_name}")
+            elif new_material_name in updated_composition:
+                st.error(f"Material {new_material_name} already exists!")
+
+        st.session_state.composition = updated_composition
+
+        if total_percentage > 100:
+            st.warning(f"Total material composition exceeds 100% (currently {total_percentage:.2f}%). Adjust values accordingly.")
+        elif total_percentage < 100:
+            st.info(f"Total material composition is below 100% (currently {total_percentage:.2f}%).")
+
+    # Efficiency Calculation Section
+    elif selected_section == "Efficiency Calculation":
+        st.subheader("Recovered Mass and Efficiency Calculation")
+        recovered_masses = {}
+
+        for material in st.session_state.composition:
+            recovered_mass = st.number_input(
+                f"Recovered Mass of {material} (kg):",
+                min_value=0.0,
+                max_value=100.0,
+                step=0.1,
+                key=f"recovered_mass_{material}"
+            )
+            recovered_masses[material] = recovered_mass
+
+        efficiencies = {}
+        total_black_mass = st.sidebar.number_input("Total Black Mass (kg):", min_value=0.1, value=10.0, step=0.1, key="total_black_mass")
+        total_recovered_mass = 0
+
+        for material, percentage in st.session_state.composition.items():
+            initial_mass = total_black_mass * (percentage / 100)
+            recovered_mass = recovered_masses.get(material, 0.0)
+            efficiency = (recovered_mass / initial_mass) * 100 if initial_mass > 0 else 0.0
+            efficiencies[material] = efficiency
+            total_recovered_mass += recovered_mass
+
+        overall_efficiency = (total_recovered_mass / total_black_mass) * 100
+
+        st.write(f"**Overall Process Efficiency:** {overall_efficiency:.2f}%")
+        st.write("**Efficiency and Recovered Mass per Material:**")
+        result_df = pd.DataFrame({
+            "Material": list(st.session_state.composition.keys()),
+            "Initial Mass in BM (kg)": [total_black_mass * (p / 100) for p in st.session_state.composition.values()],
+            "Recovered Mass (kg)": [recovered_masses.get(m, 0.0) for m in st.session_state.composition.keys()],
+            "Efficiency (%)": [efficiencies.get(m, 0.0) for m in st.session_state.composition.keys()]
+        })
+        st.table(result_df)
+
+    # Solid/Liquid Ratios Section
+    elif selected_section == "Solid/Liquid Ratios":
+        st.subheader("Solid/Liquid Ratios for Each Phase")
+
+        if "phases" not in st.session_state:
+            st.session_state.phases = {
+                "Leaching in Water": {"liquids": [{"type": "Water", "volume": 20.0}], "mass": 5.0},
+                "Leaching in Acid": {"liquids": [{"type": "Malic Acid", "volume": 5.0}, {"type": "Water", "volume": 2.0}], "mass": 5.0}
+            }
+
+        phases = st.session_state.phases
+        updated_phases = {}
+
+        for phase_name, phase_data in phases.items():
+            st.subheader(f"Phase: {phase_name}")
+            liquids = phase_data.get("liquids", [])
+            updated_liquids = []
+
+            phase_mass = st.number_input(
+                f"Mass for {phase_name} (kg):", min_value=0.0, value=phase_data.get("mass", 0.0), step=0.1, key=f"mass_{phase_name}"
+            )
+
+            for idx, liquid in enumerate(liquids):
+                col1, col2, col3 = st.columns([2, 1, 1])
+                with col1:
+                    liquid_type = st.text_input(
+                        f"Liquid Type ({liquid['type']}):", value=liquid["type"], key=f"liquid_type_{phase_name}_{idx}"
+                    )
+                with col2:
+                    liquid_volume = st.number_input(
+                        f"Volume ({liquid['type']}, L):", min_value=0.0, value=liquid["volume"], step=0.1, key=f"volume_{phase_name}_{idx}"
+                    )
+                with col3:
+                    if st.button(f"Remove {liquid['type']}", key=f"remove_{phase_name}_{idx}"):
+                        continue
+
+                updated_liquids.append({"type": liquid_type, "volume": liquid_volume})
+
+            updated_phases[phase_name] = {"liquids": updated_liquids, "mass": phase_mass}
+
+        st.session_state.phases = updated_phases
+
+        sl_results = []
+        for phase_name, phase_data in st.session_state.phases.items():
+            phase_mass = phase_data["mass"]
+            phase_liquids = phase_data["liquids"]
+            total_liquid_volume = sum(liquid["volume"] for liquid in phase_liquids)
+
+            for liquid in phase_liquids:
+                liquid_ratio = phase_mass / liquid["volume"] if liquid["volume"] > 0 else 0
+                sl_results.append({
+                    "Phase": phase_name,
+                    "Liquid Type": liquid["type"],
+                    "Phase Mass (kg)": phase_mass,
+                    "Liquid Volume (L)": liquid["volume"],
+                    "S/L Ratio": liquid_ratio
+                })
+
+            overall_ratio = phase_mass / total_liquid_volume if total_liquid_volume > 0 else 0
+            sl_results.append({
+                "Phase": phase_name,
+                "Liquid Type": "Overall",
+                "Phase Mass (kg)": phase_mass,
+                "Liquid Volume (L)": total_liquid_volume,
+                "S/L Ratio": overall_ratio
+            })
+
+        sl_df = pd.DataFrame(sl_results)
+        st.table(sl_df)
+
 # Render the selected page
 if page == "Economic KPIs":
     economic_kpis()
