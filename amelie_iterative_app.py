@@ -6,36 +6,96 @@ import pandas as pd
 import io
 import sqlite3
 import json
+import bcrypt
 
-# Initialize the database
+# Database Initialization
 def init_db():
     conn = sqlite3.connect("scenarios.db")
     c = conn.cursor()
+
+    # Create users table
+    c.execute('''CREATE TABLE IF NOT EXISTS users (
+                    username TEXT PRIMARY KEY,
+                    password TEXT
+                )''')
+
+    # Create scenarios table
     c.execute('''CREATE TABLE IF NOT EXISTS scenarios (
                     username TEXT,
                     scenario_name TEXT,
-                    data TEXT
+                    data TEXT,
+                    FOREIGN KEY(username) REFERENCES users(username)
                 )''')
+
     conn.commit()
     conn.close()
 
 init_db()
-def login():
-    st.sidebar.title("Login")
+
+# Password Hashing and Verification
+def hash_password(password):
+    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+def check_password(password, hashed):
+    return bcrypt.checkpw(password.encode('utf-8'), hashed.encode('utf-8'))
+
+# User Registration
+def register_user(username, password):
+    conn = sqlite3.connect("scenarios.db")
+    c = conn.cursor()
+
+    c.execute("SELECT * FROM users WHERE username = ?", (username,))
+    if c.fetchone():
+        conn.close()
+        return "Username already exists."
+
+    hashed_password = hash_password(password)
+    c.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, hashed_password))
+    conn.commit()
+    conn.close()
+    return "User registered successfully."
+
+# User Authentication
+def authenticate_user(username, password):
+    conn = sqlite3.connect("scenarios.db")
+    c = conn.cursor()
+
+    c.execute("SELECT password FROM users WHERE username = ?", (username,))
+    result = c.fetchone()
+    conn.close()
+
+    if result and check_password(password, result[0]):
+        return True
+    return False
+
+# Login/Registration UI
+def login_or_register():
+    st.sidebar.title("Login or Register")
+    choice = st.sidebar.radio("Select an option:", ["Login", "Register"])
+
     username = st.sidebar.text_input("Username")
     password = st.sidebar.text_input("Password", type="password")
-    if st.sidebar.button("Login"):
-        if username in user_db and user_db[username] == password:
-            st.session_state["logged_in"] = True
-            st.session_state["username"] = username
-            st.sidebar.success(f"Welcome, {username}!")
-        else:
-            st.sidebar.error("Invalid username or password")
 
-# Handle login
-if "logged_in" not in st.session_state or not st.session_state["logged_in"]:
-    login()
-    st.stop()
+    if choice == "Login":
+        if st.sidebar.button("Login"):
+            if authenticate_user(username, password):
+                st.session_state["logged_in"] = True
+                st.session_state["username"] = username
+                st.sidebar.success(f"Welcome, {username}!")
+            else:
+                st.sidebar.error("Invalid username or password.")
+    elif choice == "Register":
+        if st.sidebar.button("Register"):
+            if username and password:
+                message = register_user(username, password)
+                if "successfully" in message:
+                    st.sidebar.success(message)
+                else:
+                    st.sidebar.error(message)
+            else:
+                st.sidebar.error("Please provide a username and password.")
+
+# Scenario Management
 def save_scenario_to_db(username, scenario_name, scenario_data):
     conn = sqlite3.connect("scenarios.db")
     c = conn.cursor()
@@ -52,7 +112,7 @@ def save_scenario_to_db(username, scenario_name, scenario_data):
     conn.commit()
     conn.close()
     return "Scenario saved successfully!" if not exists else "Scenario updated successfully!"
-    
+
 def load_scenarios_from_db(username):
     conn = sqlite3.connect("scenarios.db")
     c = conn.cursor()
@@ -61,15 +121,11 @@ def load_scenarios_from_db(username):
     conn.close()
     return {row[0]: json.loads(row[1]) for row in rows}
 
-user_db = {"user1": "password1", "user2": "password2"}  # Replace with a proper user management system
-
-# Save the current scenario
 def save_current_scenario():
     username = st.session_state.get("username", "guest")
     scenario_name = st.text_input("Enter Scenario Name:")
     if st.button("Save Scenario"):
         if scenario_name:
-            # Collect current app state
             scenario_data = {
                 "economic_kpis": st.session_state.get("economic_kpis", {}),
                 "technical_kpis": st.session_state.get("technical_kpis", {})
@@ -79,7 +135,6 @@ def save_current_scenario():
         else:
             st.error("Please provide a scenario name.")
 
-# Load a saved scenario
 def load_scenario():
     username = st.session_state.get("username", "guest")
     scenarios = load_scenarios_from_db(username)
@@ -89,269 +144,180 @@ def load_scenario():
         selected_scenario = st.selectbox("Select a scenario to load:", scenario_list)
         if st.button("Load Scenario"):
             scenario_data = scenarios[selected_scenario]
-            # Update session state with loaded scenario
             for key, value in scenario_data.items():
                 st.session_state[key] = value
             st.success(f"Scenario '{selected_scenario}' loaded!")
     else:
         st.info("No saved scenarios available.")
 
-
-
-# Configure the page layout
+# App Layout
 st.set_page_config(
     page_title="Amelie KPI Tool",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-
-# Sidebar navigation
-st.sidebar.title("Navigation")
-page = st.sidebar.radio("Select a Page:", ["Economic KPIs", "Technical KPIs"])
-
-
-class AmelieEconomicModel:
-    def __init__(self):
-        self.capex = {
-            'Leaching Reactor': 20000,
-            'Press Filter': 15000,
-            'Precipitation Reactor': 18000,
-            'Solvent Extraction Unit': 30000,
-            'Microwave Thermal Treatment Unit': 25000,
-            'Pre-treatment Dryer': 15000,
-            'Secondary Dryer': 12000,
-            'Wastewater Treatment Unit': 18000
-        }
-        self.opex = {
-            'Reagents': 90,
-            'Energy': 44,
-            'Labor': 80,
-            'Maintenance': 20,
-            'Disposal': 12.5,
-            'Microwave Energy': 6.0,
-            'Drying Energy (Pre-treatment)': 3.5,
-            'Drying Energy (Secondary)': 2.5,
-            'Malic Acid': 8.0,
-            'Hydrogen Peroxide': 4.0,
-            'Lithium Precipitation Reagents': 5.0,
-            'Co/Ni/Mn Precipitation Reagents': 7.0,
-            'Wastewater Treatment Chemicals': 6.0
-        }
-        self.energy_consumption = {
-            'Leaching Reactor': 5,
-            'Press Filter': 3,
-            'Precipitation Reactor': 4,
-            'Solvent Extraction Unit': 6,
-            'Microwave Thermal Treatment': 2.5
-        }
-        self.energy_cost = 0.12  # EUR per kWh
-        self.black_mass = 10
-        self.scenarios = {}
-
-    def calculate_totals(self):
-        capex_total = sum(self.capex.values())
-        opex_total = sum(self.opex.values()) + self.calculate_total_energy_cost()
-        return capex_total, opex_total
-
-    def calculate_total_energy_cost(self):
-        total_kWh = sum(self.energy_consumption.values())
-        return total_kWh * self.energy_cost
-
-    def generate_pie_chart(self, data, title):
-        fig, ax = plt.subplots(figsize=(12, 10))
-        explode = [0.1 if key in ["Reagents", "Energy", "Labor"] else 0 for key in data.keys()]
-        wedges, texts, autotexts = ax.pie(
-            data.values(),
-            labels=None,
-            autopct='%1.1f%%',
-            startangle=90,
-            explode=explode
-        )
-        ax.set_title(title, fontsize=16)
-        ax.legend(
-            loc="upper left",
-            labels=[f"{key} ({value} EUR)" for key, value in data.items()],
-            fontsize=12,
-            bbox_to_anchor=(1, 0.5),
-            frameon=False
-        )
-        for text in autotexts:
-            text.set_fontsize(14)
-            text.set_color('black')
-
-        buf = io.BytesIO()
-        plt.savefig(buf, format='png', bbox_inches="tight")
-        buf.seek(0)
-        return buf
-
-    def generate_table(self, data):
-        df = pd.DataFrame(list(data.items()), columns=['Category', 'Cost (EUR)'])
-        total = df['Cost (EUR)'].sum()
-        df.loc[len(df)] = ['Total', total]
-        return df
+if "logged_in" not in st.session_state or not st.session_state["logged_in"]:
+    login_or_register()
+    st.stop()
 
 
-# Initialize Model
-model = AmelieEconomicModel()
-
-# Streamlit App
-st.title("Amelie Economic Model Configurator")
-
+# Economic KPIs Page
 def economic_kpis():
     st.title("Economic KPIs")
 
-    # Manage General Assumptions Dynamically
-    st.subheader("General Assumptions")
-    if "general_assumptions" not in st.session_state:
-        st.session_state.general_assumptions = [
-            "Pilot project sized for 10 kg BM per batch.",
-            "No infrastructure costs.",
-            "Energy cost calculated dynamically based on kWh per machine.",
-            "Labor includes one operator per batch.",
-            "Maintenance and disposal are estimated."
-        ]
+    # Section Dropdown for Navigation
+    sections = ["General Assumptions", "CapEx Configuration", "OpEx Configuration", "Results"]
+    selected_section = st.selectbox("Jump to Section:", sections)
 
-    updated_assumptions = []
+    # General Assumptions Section
+    if selected_section == "General Assumptions":
+        st.subheader("General Assumptions")
+        if "general_assumptions" not in st.session_state:
+            st.session_state.general_assumptions = [
+                "Pilot project sized for 10 kg BM per batch.",
+                "No infrastructure costs.",
+                "Energy cost calculated dynamically based on kWh per machine.",
+                "Labor includes one operator per batch.",
+                "Maintenance and disposal are estimated."
+            ]
 
-    for idx, assumption in enumerate(st.session_state.general_assumptions):
-        col1, col2 = st.columns([4, 1])
-        with col1:
-            new_assumption = st.text_area(f"Assumption {idx + 1}:", value=assumption, key=f"edit_assumption_{idx}")
-        with col2:
-            if st.button(f"Remove Assumption {idx + 1}", key=f"remove_assumption_{idx}"):
-                continue
+        updated_assumptions = []
 
-        updated_assumptions.append(new_assumption)
+        for idx, assumption in enumerate(st.session_state.general_assumptions):
+            col1, col2 = st.columns([4, 1])
+            with col1:
+                new_assumption = st.text_area(f"Assumption {idx + 1}:", value=assumption, key=f"edit_assumption_{idx}")
+            with col2:
+                if st.button(f"Remove Assumption {idx + 1}", key=f"remove_assumption_{idx}"):
+                    continue
 
-    st.session_state.general_assumptions = updated_assumptions
+            updated_assumptions.append(new_assumption)
 
-    st.markdown("**Add New Assumption**")
-    new_assumption = st.text_area("New Assumption:", key="new_assumption")
-    if st.button("Add Assumption"):
-        if new_assumption:
-            st.session_state.general_assumptions.append(new_assumption)
-            st.success("Added new assumption.")
-        else:
-            st.error("Assumption cannot be empty.")
+        st.session_state.general_assumptions = updated_assumptions
 
-    st.markdown("### Current Assumptions")
-    for idx, assumption in enumerate(st.session_state.general_assumptions):
-        st.write(f"{idx + 1}. {assumption}")
+        st.markdown("**Add New Assumption**")
+        new_assumption = st.text_area("New Assumption:", key="new_assumption")
+        if st.button("Add Assumption"):
+            if new_assumption:
+                st.session_state.general_assumptions.append(new_assumption)
+                st.success("Added new assumption.")
+            else:
+                st.error("Assumption cannot be empty.")
 
-    # Other Economic KPIs Sections (CapEx, OpEx, etc.)
-    st.subheader("Configure Black Mass")
-    model.black_mass = st.number_input("Mass of Black Mass (kg):", min_value=1, value=model.black_mass)
+        st.markdown("### Current Assumptions")
+        for idx, assumption in enumerate(st.session_state.general_assumptions):
+            st.write(f"{idx + 1}. {assumption}")
 
-    # CapEx Section
-    st.subheader("CapEx Configuration")
-    if "capex_data" not in st.session_state:
-        st.session_state.capex_data = model.capex.copy()
+    # CapEx Configuration Section
+    elif selected_section == "CapEx Configuration":
+        st.subheader("CapEx Configuration")
+        if "capex_data" not in st.session_state:
+            st.session_state.capex_data = model.capex.copy()
 
-    capex_to_delete = []
-    for key in list(st.session_state.capex_data.keys()):
-        col1, col2, col3 = st.columns([3, 2, 1])
-        with col1:
-            new_name = st.text_input(f"Edit Name: {key}", value=key, key=f"capex_name_{key}")
-        with col2:
-            new_cost = st.number_input(
-                f"Edit Cost for {key} (EUR):",
-                value=float(st.session_state.capex_data[key]),
-                min_value=0.0,
-                key=f"capex_cost_{key}"
-            )
-        with col3:
-            if st.button("Remove", key=f"remove_capex_{key}"):
-                capex_to_delete.append(key)
-        if new_name != key:
-            st.session_state.capex_data[new_name] = st.session_state.capex_data.pop(key)
-        st.session_state.capex_data[new_name] = new_cost
+        capex_to_delete = []
+        for key in list(st.session_state.capex_data.keys()):
+            col1, col2, col3 = st.columns([3, 2, 1])
+            with col1:
+                new_name = st.text_input(f"Edit Name: {key}", value=key, key=f"capex_name_{key}")
+            with col2:
+                new_cost = st.number_input(
+                    f"Edit Cost for {key} (EUR):",
+                    value=float(st.session_state.capex_data[key]),
+                    min_value=0.0,
+                    key=f"capex_cost_{key}"
+                )
+            with col3:
+                if st.button("Remove", key=f"remove_capex_{key}"):
+                    capex_to_delete.append(key)
+            if new_name != key:
+                st.session_state.capex_data[new_name] = st.session_state.capex_data.pop(key)
+            st.session_state.capex_data[new_name] = new_cost
 
-    for item in capex_to_delete:
-        del st.session_state.capex_data[item]
+        for item in capex_to_delete:
+            del st.session_state.capex_data[item]
 
-    st.markdown("**Add New CapEx Item**")
-    new_capex_name = st.text_input("New CapEx Name:", key="new_capex_name")
-    new_capex_cost = st.number_input("New CapEx Cost (EUR):", min_value=0.0, key="new_capex_cost")
-    if st.button("Add CapEx", key="add_capex"):
-        if new_capex_name and new_capex_name not in st.session_state.capex_data:
-            st.session_state.capex_data[new_capex_name] = new_capex_cost
-            st.success(f"Added new CapEx item: {new_capex_name}")
-        elif new_capex_name in st.session_state.capex_data:
-            st.error(f"The CapEx item '{new_capex_name}' already exists!")
+        st.markdown("**Add New CapEx Item**")
+        new_capex_name = st.text_input("New CapEx Name:", key="new_capex_name")
+        new_capex_cost = st.number_input("New CapEx Cost (EUR):", min_value=0.0, key="new_capex_cost")
+        if st.button("Add CapEx", key="add_capex"):
+            if new_capex_name and new_capex_name not in st.session_state.capex_data:
+                st.session_state.capex_data[new_capex_name] = new_capex_cost
+                st.success(f"Added new CapEx item: {new_capex_name}")
+            elif new_capex_name in st.session_state.capex_data:
+                st.error(f"The CapEx item '{new_capex_name}' already exists!")
 
-    model.capex = st.session_state.capex_data
+        model.capex = st.session_state.capex_data
 
-    # OpEx Section
-    st.subheader("OpEx Configuration")
-    if "opex_data" not in st.session_state:
-        st.session_state.opex_data = model.opex.copy()
+    # OpEx Configuration Section
+    elif selected_section == "OpEx Configuration":
+        st.subheader("OpEx Configuration")
+        if "opex_data" not in st.session_state:
+            st.session_state.opex_data = model.opex.copy()
 
-    opex_to_delete = []
-    for key in list(st.session_state.opex_data.keys()):
-        col1, col2, col3 = st.columns([3, 2, 1])
-        with col1:
-            new_name = st.text_input(f"Edit Name: {key}", value=key, key=f"opex_name_{key}")
-        with col2:
-            new_cost = st.number_input(
-                f"Edit Cost for {key} (EUR/batch):",
-                value=float(st.session_state.opex_data[key]),
-                min_value=0.0,
-                key=f"opex_cost_{key}"
-            )
-        with col3:
-            if st.button("Remove", key=f"remove_opex_{key}"):
-                opex_to_delete.append(key)
-        if new_name != key:
-            st.session_state.opex_data[new_name] = st.session_state.opex_data.pop(key)
-        st.session_state.opex_data[new_name] = new_cost
+        opex_to_delete = []
+        for key in list(st.session_state.opex_data.keys()):
+            col1, col2, col3 = st.columns([3, 2, 1])
+            with col1:
+                new_name = st.text_input(f"Edit Name: {key}", value=key, key=f"opex_name_{key}")
+            with col2:
+                new_cost = st.number_input(
+                    f"Edit Cost for {key} (EUR/batch):",
+                    value=float(st.session_state.opex_data[key]),
+                    min_value=0.0,
+                    key=f"opex_cost_{key}"
+                )
+            with col3:
+                if st.button("Remove", key=f"remove_opex_{key}"):
+                    opex_to_delete.append(key)
+            if new_name != key:
+                st.session_state.opex_data[new_name] = st.session_state.opex_data.pop(key)
+            st.session_state.opex_data[new_name] = new_cost
 
-    for item in opex_to_delete:
-        del st.session_state.opex_data[item]
+        for item in opex_to_delete:
+            del st.session_state.opex_data[item]
 
-    st.markdown("**Add New OpEx Item**")
-    new_opex_name = st.text_input("New OpEx Name:", key="new_opex_name")
-    new_opex_cost = st.number_input("New OpEx Cost (EUR/batch):", min_value=0.0, key="new_opex_cost")
-    if st.button("Add OpEx", key="add_opex"):
-        if new_opex_name and new_opex_name not in st.session_state.opex_data:
-            st.session_state.opex_data[new_opex_name] = new_opex_cost
-            st.success(f"Added new OpEx item: {new_opex_name}")
-        elif new_opex_name in st.session_state.opex_data:
-            st.error(f"The OpEx item '{new_opex_name}' already exists!")
+        st.markdown("**Add New OpEx Item**")
+        new_opex_name = st.text_input("New OpEx Name:", key="new_opex_name")
+        new_opex_cost = st.number_input("New OpEx Cost (EUR/batch):", min_value=0.0, key="new_opex_cost")
+        if st.button("Add OpEx", key="add_opex"):
+            if new_opex_name and new_opex_name not in st.session_state.opex_data:
+                st.session_state.opex_data[new_opex_name] = new_opex_cost
+                st.success(f"Added new OpEx item: {new_opex_name}")
+            elif new_opex_name in st.session_state.opex_data:
+                st.error(f"The OpEx item '{new_opex_name}' already exists!")
 
-    model.opex = st.session_state.opex_data
+        model.opex = st.session_state.opex_data
 
     # Results Section
-    st.subheader("Results")
-    capex_total, opex_total = model.calculate_totals()
-    st.write(f"**Total CapEx:** {capex_total} EUR")
-    st.write(f"**Total OpEx (including energy):** {opex_total} EUR/batch")
+    elif selected_section == "Results":
+        st.subheader("Results")
+        capex_total, opex_total = model.calculate_totals()
+        st.write(f"**Total CapEx:** {capex_total} EUR")
+        st.write(f"**Total OpEx (including energy):** {opex_total} EUR/batch")
 
+    # Save the current economic KPIs into session state
     st.session_state["economic_kpis"] = {
-      "general_assumptions": st.session_state.get("general_assumptions", []),
-      "capex_data": st.session_state.get("capex_data", {}),
-      "opex_data": st.session_state.get("opex_data", {}),
-      "energy_data": st.session_state.get("energy_data", {}),
-      "results": {
-          "capex_total": capex_total,
-          "opex_total": opex_total
-      }
-  }
+        "general_assumptions": st.session_state.get("general_assumptions", []),
+        "capex_data": st.session_state.get("capex_data", {}),
+        "opex_data": st.session_state.get("opex_data", {}),
+        "results": {
+            "capex_total": capex_total,
+            "opex_total": opex_total
+        }
+    }
+
+    # Scenario Management
     st.sidebar.title("Scenario Management")
-if st.sidebar.button("Save Current Scenario"):
-    save_current_scenario()
-if st.sidebar.button("Load Existing Scenario"):
-    load_scenario()
-
-
-
-import pandas as pd
-import streamlit as st
-
+    if st.sidebar.button("Save Current Scenario"):
+        save_current_scenario()
+    if st.sidebar.button("Load Existing Scenario"):
+        load_scenario()
+# Technical KPIs Page
 def technical_kpis():
     st.title("Technical KPIs: Efficiency and Solid/Liquid Ratios")
 
-    # Add a section dropdown
+    # Section Dropdown for Navigation
     sections = ["Material Composition", "Efficiency Calculation", "Solid/Liquid Ratios"]
     selected_section = st.selectbox("Jump to Section:", sections)
 
@@ -507,30 +473,25 @@ def technical_kpis():
 
         sl_df = pd.DataFrame(sl_results)
         st.table(sl_df)
-        st.session_state["technical_kpis"] = {
-    "composition": st.session_state.get("composition", {}),
-    "phases": st.session_state.get("phases", {}),
-    "efficiency_results": {
-        "overall_efficiency": overall_efficiency,
-        "per_material": result_df.to_dict("records")
-    },
-    "solid_liquid_ratios": sl_df.to_dict("records")
-}
-        st.sidebar.title("Scenario Management")
-if st.sidebar.button("Save Current Scenario"):
-    save_current_scenario()
-if st.sidebar.button("Load Existing Scenario"):
-    load_scenario()
 
+    # Save the current technical KPIs into session state
+    st.session_state["technical_kpis"] = {
+        "composition": st.session_state.get("composition", {}),
+        "phases": st.session_state.get("phases", {}),
+        "solid_liquid_ratios": sl_df.to_dict("records")
+    }
 
-# Render the selected page
+    # Scenario Management
+    st.sidebar.title("Scenario Management")
+    if st.sidebar.button("Save Current Scenario"):
+        save_current_scenario()
+    if st.sidebar.button("Load Existing Scenario"):
+        load_scenario()
+# Sidebar Navigation
+st.sidebar.title("Navigation")
+page = st.sidebar.radio("Select a Page:", ["Economic KPIs", "Technical KPIs"])
+
 if page == "Economic KPIs":
     economic_kpis()
 elif page == "Technical KPIs":
     technical_kpis()
-
-
-
-
-
-
