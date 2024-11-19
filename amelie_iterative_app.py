@@ -133,7 +133,7 @@ def economic_kpis():
 
         # Display existing assumptions with editing options
         assumptions_to_delete = []
-          for key, value in st.session_state.assumptions.items():
+        for key, value in st.session_state.assumptions.items():
             col1, col2, col3 = st.columns([3, 2, 1])
             with col1:
                 new_name = st.text_input(f"Edit Assumption Name: {key}", value=key, key=f"assumption_name_{key}")
