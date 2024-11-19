@@ -117,56 +117,48 @@ def economic_kpis():
     sections = ["General Assumptions", "CapEx Configuration", "OpEx Configuration", "Results"]
     selected_section = st.selectbox("Jump to Section:", sections)
 
-# General Assumptions Section
+    # General Assumptions Section
     if selected_section == "General Assumptions":
         st.subheader("General Assumptions")
-    
+        
+        # Initialize assumptions if not already in session state
         if "assumptions" not in st.session_state:
-                st.session_state.assumptions = {
-                "Batch Size (kg)": 10,
-                "Operator per Batch": 1,
-                "Energy Cost (EUR/kWh)": 0.12,
-                "Process Includes": "Pre-treatment, microwave thermal treatment, leaching in water, precipitation, secondary drying, leaching in acid, and wastewater treatment",
-                "Maintenance Estimation": "Estimated based on equipment type and usage",
-                "Disposal Costs": "Included in OpEx",
-            }
-
+            st.session_state.assumptions = [
+                "Batch Size (10 kg)",
+                "1 Operator per Batch",
+                "Energy Cost: 0.12 EUR/kWh",
+                "Process Includes: Pre-treatment, microwave thermal treatment, leaching in water, precipitation, secondary drying, leaching in acid, and wastewater treatment"
+            ]
+    
         # Display existing assumptions with editing options
         assumptions_to_delete = []
-        for key, value in st.session_state.assumptions.items():
-            col1, col2, col3 = st.columns([3, 2, 1])
+        for idx, assumption in enumerate(st.session_state.assumptions):
+            col1, col2 = st.columns([4, 1])
             with col1:
-                new_name = st.text_input(f"Edit Assumption Name: {key}", value=key, key=f"assumption_name_{key}")
+                st.text_input(f"Edit Assumption {idx + 1}:", value=assumption, key=f"assumption_{idx}")
             with col2:
-                new_value = st.text_input(f"Edit Value for {key}:", value=str(value), key=f"assumption_value_{key}")
-            with col3:
-                if st.button("Remove Assumption", key=f"remove_assumption_{key}"):
-                    assumptions_to_delete.append(key)
-
-             # Update session state for modified assumptions
-            if new_name != key:
-                st.session_state.assumptions[new_name] = st.session_state.assumptions.pop(key)
-            st.session_state.assumptions[new_name] = new_value
-
+                if st.button("Remove", key=f"remove_assumption_{idx}"):
+                    assumptions_to_delete.append(idx)
+    
         # Remove deleted assumptions
-        for item in assumptions_to_delete:
-            del st.session_state.assumptions[item]
-
+        for idx in sorted(assumptions_to_delete, reverse=True):
+            st.session_state.assumptions.pop(idx)
+    
         # Add a new assumption
         st.markdown("**Add New Assumption**")
-        new_assumption_name = st.text_input("New Assumption Name:", key="new_assumption_name")
-        new_assumption_value = st.text_input("New Assumption Value:", key="new_assumption_value")
+        new_assumption = st.text_input("New Assumption:", key="new_assumption")
         if st.button("Add Assumption", key="add_assumption"):
-            if new_assumption_name and new_assumption_name not in st.session_state.assumptions:
-                st.session_state.assumptions[new_assumption_name] = new_assumption_value
-                st.success(f"Added new assumption: {new_assumption_name}")
+            if new_assumption:
+                st.session_state.assumptions.append(new_assumption)
+                st.success(f"Added new assumption: {new_assumption}")
             else:
-                st.error("Assumption already exists or name is invalid!")
-
+                st.error("Assumption cannot be empty!")
+    
         # Display all assumptions
         st.markdown("### Current Assumptions")
-        st.write(st.session_state.assumptions)
-
+        for idx, assumption in enumerate(st.session_state.assumptions, 1):
+            st.write(f"{idx}. {assumption}")
+    
         flowchart_path = "processo.png"
         st.image(flowchart_path, caption="Recycling Process Flowchart (UNIBS) (from Rallo thesis)", use_column_width=True)
 
@@ -203,12 +195,20 @@ def economic_kpis():
         # Update the model
         model.capex = st.session_state.capex_data
 
+            # OpEx Configuration Section
         # OpEx Configuration Section
     elif selected_section == "OpEx Configuration":
         st.subheader("OpEx Configuration")
-
+    
+        # Energy Cost Integration
+        energy_cost = float([assumption for assumption in st.session_state.assumptions if "Energy Cost" in assumption][0].split(":")[1].strip().replace("EUR/kWh", "").strip())
+        st.session_state.energy_cost = energy_cost  # Sync energy cost from assumptions
+        total_energy_cost = sum([consumption * energy_cost for consumption in st.session_state.energy_data.values()])
+        st.session_state.opex_data["Energy"] = total_energy_cost
+    
         # Energy Configuration
         st.markdown("### Energy Configuration")
+        energy_to_delete = []
         for key, value in st.session_state.energy_data.items():
             col1, col2 = st.columns([3, 2])
             with col1:
@@ -218,15 +218,12 @@ def economic_kpis():
             if new_name != key:
                 st.session_state.energy_data[new_name] = st.session_state.energy_data.pop(key)
             st.session_state.energy_data[new_name] = new_consumption
-
-        energy_to_delete = []
         for key in st.session_state.energy_data.keys():
             if st.button(f"Remove {key}", key=f"remove_energy_{key}"):
                 energy_to_delete.append(key)
-
         for item in energy_to_delete:
             del st.session_state.energy_data[item]
-
+    
         st.markdown("**Add New Energy Equipment**")
         new_energy_name = st.text_input("New Equipment Name:", key="new_energy_name")
         new_energy_value = st.number_input("Energy Consumption (kWh):", min_value=0.0, key="new_energy_value")
@@ -236,17 +233,12 @@ def economic_kpis():
                 st.success(f"Added new energy equipment: {new_energy_name}")
             else:
                 st.error("Energy equipment already exists or name is invalid!")
-
-        # Update energy cost dynamically
-        st.session_state.energy_cost = st.number_input("Cost per kWh (EUR):", value=float(st.session_state.energy_cost), min_value=0.0)
-        model.energy_cost = st.session_state.energy_cost
-        model.energy_consumption = st.session_state.energy_data
-
+    
         # General OpEx Configuration
         st.markdown("### General OpEx Configuration")
         opex_to_delete = []
         for key, value in st.session_state.opex_data.items():
-            if key != "Energy":
+            if key != "Energy":  # Skip energy as it is dynamically calculated
                 col1, col2, col3 = st.columns([3, 2, 1])
                 with col1:
                     new_name = st.text_input(f"Edit Name: {key}", value=key, key=f"opex_name_{key}")
@@ -258,11 +250,9 @@ def economic_kpis():
                 if new_name != key:
                     st.session_state.opex_data[new_name] = st.session_state.opex_data.pop(key)
                 st.session_state.opex_data[new_name] = new_cost
-
         for item in opex_to_delete:
             del st.session_state.opex_data[item]
-
-        # Add new OpEx item
+    
         st.markdown("**Add New OpEx Item**")
         new_name = st.text_input("New OpEx Name:", key="new_opex_name")
         new_cost = st.number_input("New OpEx Cost (EUR):", min_value=0.0, key="new_opex_cost")
@@ -272,9 +262,10 @@ def economic_kpis():
                 st.success(f"Added new OpEx item: {new_name}")
             else:
                 st.error("OpEx item already exists or name is invalid!")
-
+    
         # Update the model
         model.opex = st.session_state.opex_data
+        model.energy_consumption = st.session_state.energy_data
 
     # Results Section
     elif selected_section == "Results":
