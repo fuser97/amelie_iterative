@@ -244,8 +244,8 @@ def economic_kpis():
 
 
         # General OpEx Configuration
-        st.markdown("### General OpEx Configuration")
-        opex_to_delete = []
+    st.markdown("### General OpEx Configuration")
+    opex_to_delete = []
         for key, value in st.session_state.opex_data.items():
             if key != "Energy":
                 col1, col2, col3 = st.columns([3, 2, 1])
