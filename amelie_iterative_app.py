@@ -112,7 +112,7 @@ def economic_kpis():
         st.session_state.energy_data = model.energy_consumption.copy()
     if "energy_cost" not in st.session_state:
        energy_cost = st.number_input("Cost per kWh (EUR):", value=st.session_state.get("energy_cost", 0.12), min_value=0.0, key="energy_cost")
-       st.session_state.energy_cost = energy_cost
+       
 
 
     # Add a section dropdown
@@ -204,8 +204,17 @@ def economic_kpis():
         # Energy Configuration
         st.markdown("### Energy Configuration")
     
-        # Define cost per kWh
+        # Definisci il costo per kWh
         st.session_state.energy_cost = st.number_input("Cost per kWh (EUR):", value=st.session_state.get("energy_cost", 0.12), min_value=0.0, key="energy_cost")
+        
+        # Calcola il consumo totale di energia
+        total_energy_consumption = sum(st.session_state.energy_data.values())
+        total_energy_cost = total_energy_consumption * st.session_state.energy_cost
+        st.session_state.opex_data["Energy"] = total_energy_cost
+        
+        # Visualizza il costo totale dell'energia
+        st.markdown(f"**Total Energy Cost:** {total_energy_cost:.2f} EUR")
+
     
         # Add, edit, and delete energy equipment
         energy_to_delete = []
