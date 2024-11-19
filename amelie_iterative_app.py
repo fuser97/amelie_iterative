@@ -117,17 +117,56 @@ def economic_kpis():
     sections = ["General Assumptions", "CapEx Configuration", "OpEx Configuration", "Results"]
     selected_section = st.selectbox("Jump to Section:", sections)
 
-    # General Assumptions Section
+# General Assumptions Section
     if selected_section == "General Assumptions":
         st.subheader("General Assumptions")
-        st.markdown("""
-        - Pilot project sized for 10 kg BM per batch.
-        - No infrastructure costs.
-        - Process includes BM pre-treatment, microwave-assisted thermal treatment, leaching in water, precipitation for lithium recovery, secondary drying, leaching in acid (malic acid and hydrogen peroxide), and wastewater treatment.
-        - Energy cost calculated dynamically based on kWh per machine.
-        - Labor includes one operator per batch.
-        - Maintenance and disposal are estimated.
-        """)
+    
+        if "assumptions" not in st.session_state:
+                st.session_state.assumptions = {
+                "Batch Size (kg)": 10,
+                "Operator per Batch": 1,
+                "Energy Cost (EUR/kWh)": 0.12,
+                "Process Includes": "Pre-treatment, microwave thermal treatment, leaching in water, precipitation, secondary drying, leaching in acid, and wastewater treatment",
+                "Maintenance Estimation": "Estimated based on equipment type and usage",
+                "Disposal Costs": "Included in OpEx",
+            }
+
+        # Display existing assumptions with editing options
+        assumptions_to_delete = []
+          for key, value in st.session_state.assumptions.items():
+            col1, col2, col3 = st.columns([3, 2, 1])
+            with col1:
+                new_name = st.text_input(f"Edit Assumption Name: {key}", value=key, key=f"assumption_name_{key}")
+            with col2:
+                new_value = st.text_input(f"Edit Value for {key}:", value=str(value), key=f"assumption_value_{key}")
+            with col3:
+                if st.button("Remove Assumption", key=f"remove_assumption_{key}"):
+                    assumptions_to_delete.append(key)
+
+             # Update session state for modified assumptions
+            if new_name != key:
+                st.session_state.assumptions[new_name] = st.session_state.assumptions.pop(key)
+            st.session_state.assumptions[new_name] = new_value
+
+        # Remove deleted assumptions
+        for item in assumptions_to_delete:
+            del st.session_state.assumptions[item]
+
+        # Add a new assumption
+        st.markdown("**Add New Assumption**")
+        new_assumption_name = st.text_input("New Assumption Name:", key="new_assumption_name")
+        new_assumption_value = st.text_input("New Assumption Value:", key="new_assumption_value")
+        if st.button("Add Assumption", key="add_assumption"):
+            if new_assumption_name and new_assumption_name not in st.session_state.assumptions:
+                st.session_state.assumptions[new_assumption_name] = new_assumption_value
+                st.success(f"Added new assumption: {new_assumption_name}")
+            else:
+                st.error("Assumption already exists or name is invalid!")
+
+        # Display all assumptions
+        st.markdown("### Current Assumptions")
+        st.write(st.session_state.assumptions)
+
         flowchart_path = "processo.png"
         st.image(flowchart_path, caption="Recycling Process Flowchart (UNIBS) (from Rallo thesis)", use_column_width=True)
 
@@ -170,11 +209,39 @@ def economic_kpis():
 
         # Energy Configuration
         st.markdown("### Energy Configuration")
-        for key, value in st.session_state.energy_data.items():
-            st.session_state.energy_data[key] = st.number_input(f"{key} (kWh):", value=float(value), min_value=0.0, key=f"energy_{key}")
-        st.session_state.energy_cost = st.number_input("Cost per kWh (EUR):", value=float(st.session_state.energy_cost), min_value=0.0)
-        energy_total_cost = model.calculate_total_energy_cost()
-        st.session_state.opex_data["Energy"] = energy_total_cost  # Add energy cost to OpEx
+    for key, value in st.session_state.energy_data.items():
+        col1, col2 = st.columns([3, 2])
+        with col1:
+            new_name = st.text_input(f"Edit Energy Equipment: {key}", value=key, key=f"energy_name_{key}")
+        with col2:
+            new_consumption = st.number_input(f"Energy Consumption (kWh):", value=float(value), min_value=0.0, key=f"energy_value_{key}")
+        if new_name != key:
+            st.session_state.energy_data[new_name] = st.session_state.energy_data.pop(key)
+        st.session_state.energy_data[new_name] = new_consumption
+
+    energy_to_delete = []
+    for key in st.session_state.energy_data.keys():
+        if st.button(f"Remove {key}", key=f"remove_energy_{key}"):
+            energy_to_delete.append(key)
+
+    for item in energy_to_delete:
+        del st.session_state.energy_data[item]
+
+    st.markdown("**Add New Energy Equipment**")
+    new_energy_name = st.text_input("New Equipment Name:", key="new_energy_name")
+    new_energy_value = st.number_input("Energy Consumption (kWh):", min_value=0.0, key="new_energy_value")
+    if st.button("Add Energy Equipment", key="add_energy"):
+        if new_energy_name and new_energy_name not in st.session_state.energy_data:
+            st.session_state.energy_data[new_energy_name] = new_energy_value
+            st.success(f"Added new energy equipment: {new_energy_name}")
+        else:
+            st.error("Energy equipment already exists or name is invalid!")
+
+    # Update energy cost dynamically
+    st.session_state.energy_cost = st.number_input("Cost per kWh (EUR):", value=float(st.session_state.energy_cost), min_value=0.0)
+    model.energy_cost = st.session_state.energy_cost
+    model.energy_consumption = st.session_state.energy_data
+
 
         # General OpEx Configuration
         st.markdown("### General OpEx Configuration")
