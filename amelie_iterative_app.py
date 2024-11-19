@@ -108,170 +108,132 @@ st.title("Amelie Economic Model Configurator")
 def economic_kpis():
     st.title("Economic KPIs")
 
-    # Add a section dropdown
-    sections = ["General Assumptions", "CapEx Configuration", "OpEx Configuration", "Energy Consumption", "Results"]
-    selected_section = st.selectbox("Jump to Section:", sections)
+    # Manage General Assumptions Dynamically
+    st.subheader("General Assumptions")
+    if "general_assumptions" not in st.session_state:
+        st.session_state.general_assumptions = [
+            "Pilot project sized for 10 kg BM per batch.",
+            "No infrastructure costs.",
+            "Energy cost calculated dynamically based on kWh per machine.",
+            "Labor includes one operator per batch.",
+            "Maintenance and disposal are estimated."
+        ]
 
-    # General Assumptions Section
-    if selected_section == "General Assumptions":
-        st.subheader("General Assumptions")
-        st.markdown("""
-        - Pilot project sized for 10 kg BM per batch.
-        - No infrastructure costs.
-        - Process includes BM pre-treatment, microwave-assisted thermal treatment, leaching in water, precipitation for lithium recovery, secondary drying, leaching in acid (malic acid and hydrogen peroxide), and wastewater treatment.
-        - Energy cost calculated dynamically based on kWh per machine.
-        - Labor includes one operator per batch.
-        - Maintenance and disposal are estimated.
-        """)
-        flowchart_path = "processo.png"
-        st.image(flowchart_path, caption="Recycling Process Flowchart (UNIBS) (from Rallo thesis)", use_column_width=True)
+    updated_assumptions = []
 
-    # CapEx Configuration Section
-    elif selected_section == "CapEx Configuration":
-        st.subheader("CapEx Configuration")
-        if "capex_data" not in st.session_state:
-            st.session_state.capex_data = model.capex.copy()
+    for idx, assumption in enumerate(st.session_state.general_assumptions):
+        col1, col2 = st.columns([4, 1])
+        with col1:
+            new_assumption = st.text_area(f"Assumption {idx + 1}:", value=assumption, key=f"edit_assumption_{idx}")
+        with col2:
+            if st.button(f"Remove Assumption {idx + 1}", key=f"remove_assumption_{idx}"):
+                continue
 
-        capex_to_delete = []
-        for key in list(st.session_state.capex_data.keys()):
-            col1, col2, col3 = st.columns([3, 2, 1])
-            with col1:
-                new_name = st.text_input(f"Edit Name: {key}", value=key, key=f"capex_name_{key}")
-            with col2:
-                new_cost = st.number_input(
-                    f"Edit Cost for {key} (EUR):",
-                    value=float(st.session_state.capex_data[key]),
-                    min_value=0.0,
-                    key=f"capex_cost_{key}"
-                )
-            with col3:
-                if st.button("Remove", key=f"remove_capex_{key}"):
-                    capex_to_delete.append(key)
-            if new_name != key:
-                st.session_state.capex_data[new_name] = st.session_state.capex_data.pop(key)
-            st.session_state.capex_data[new_name] = new_cost
+        updated_assumptions.append(new_assumption)
 
-        for item in capex_to_delete:
-            del st.session_state.capex_data[item]
+    st.session_state.general_assumptions = updated_assumptions
 
-        st.markdown("**Add New CapEx Item**")
-        new_capex_name = st.text_input("New CapEx Name:", key="new_capex_name")
-        new_capex_cost = st.number_input("New CapEx Cost (EUR):", min_value=0.0, key="new_capex_cost")
-        if st.button("Add CapEx", key="add_capex"):
-            if new_capex_name and new_capex_name not in st.session_state.capex_data:
-                st.session_state.capex_data[new_capex_name] = new_capex_cost
-                st.success(f"Added new CapEx item: {new_capex_name}")
-            elif new_capex_name in st.session_state.capex_data:
-                st.error(f"The CapEx item '{new_capex_name}' already exists!")
+    st.markdown("**Add New Assumption**")
+    new_assumption = st.text_area("New Assumption:", key="new_assumption")
+    if st.button("Add Assumption"):
+        if new_assumption:
+            st.session_state.general_assumptions.append(new_assumption)
+            st.success("Added new assumption.")
+        else:
+            st.error("Assumption cannot be empty.")
 
-        model.capex = st.session_state.capex_data
+    st.markdown("### Current Assumptions")
+    for idx, assumption in enumerate(st.session_state.general_assumptions):
+        st.write(f"{idx + 1}. {assumption}")
 
-    # OpEx Configuration Section
-    elif selected_section == "OpEx Configuration":
-        st.subheader("OpEx Configuration")
-        if "opex_data" not in st.session_state:
-            st.session_state.opex_data = model.opex.copy()
+    # Other Economic KPIs Sections (CapEx, OpEx, etc.)
+    st.subheader("Configure Black Mass")
+    model.black_mass = st.number_input("Mass of Black Mass (kg):", min_value=1, value=model.black_mass)
 
-        opex_to_delete = []
-        for key in list(st.session_state.opex_data.keys()):
-            col1, col2, col3 = st.columns([3, 2, 1])
-            with col1:
-                new_name = st.text_input(f"Edit Name: {key}", value=key, key=f"opex_name_{key}")
-            with col2:
-                new_cost = st.number_input(
-                    f"Edit Cost for {key} (EUR/batch):",
-                    value=float(st.session_state.opex_data[key]),
-                    min_value=0.0,
-                    key=f"opex_cost_{key}"
-                )
-            with col3:
-                if st.button("Remove", key=f"remove_opex_{key}"):
-                    opex_to_delete.append(key)
-            if new_name != key:
-                st.session_state.opex_data[new_name] = st.session_state.opex_data.pop(key)
-            st.session_state.opex_data[new_name] = new_cost
+    # CapEx Section
+    st.subheader("CapEx Configuration")
+    if "capex_data" not in st.session_state:
+        st.session_state.capex_data = model.capex.copy()
 
-        for item in opex_to_delete:
-            del st.session_state.opex_data[item]
+    capex_to_delete = []
+    for key in list(st.session_state.capex_data.keys()):
+        col1, col2, col3 = st.columns([3, 2, 1])
+        with col1:
+            new_name = st.text_input(f"Edit Name: {key}", value=key, key=f"capex_name_{key}")
+        with col2:
+            new_cost = st.number_input(
+                f"Edit Cost for {key} (EUR):",
+                value=float(st.session_state.capex_data[key]),
+                min_value=0.0,
+                key=f"capex_cost_{key}"
+            )
+        with col3:
+            if st.button("Remove", key=f"remove_capex_{key}"):
+                capex_to_delete.append(key)
+        if new_name != key:
+            st.session_state.capex_data[new_name] = st.session_state.capex_data.pop(key)
+        st.session_state.capex_data[new_name] = new_cost
 
-        st.markdown("**Add New OpEx Item**")
-        new_opex_name = st.text_input("New OpEx Name:", key="new_opex_name")
-        new_opex_cost = st.number_input("New OpEx Cost (EUR/batch):", min_value=0.0, key="new_opex_cost")
-        if st.button("Add OpEx", key="add_opex"):
-            if new_opex_name and new_opex_name not in st.session_state.opex_data:
-                st.session_state.opex_data[new_opex_name] = new_opex_cost
-                st.success(f"Added new OpEx item: {new_opex_name}")
-            elif new_opex_name in st.session_state.opex_data:
-                st.error(f"The OpEx item '{new_opex_name}' already exists!")
+    for item in capex_to_delete:
+        del st.session_state.capex_data[item]
 
-        model.opex = st.session_state.opex_data
+    st.markdown("**Add New CapEx Item**")
+    new_capex_name = st.text_input("New CapEx Name:", key="new_capex_name")
+    new_capex_cost = st.number_input("New CapEx Cost (EUR):", min_value=0.0, key="new_capex_cost")
+    if st.button("Add CapEx", key="add_capex"):
+        if new_capex_name and new_capex_name not in st.session_state.capex_data:
+            st.session_state.capex_data[new_capex_name] = new_capex_cost
+            st.success(f"Added new CapEx item: {new_capex_name}")
+        elif new_capex_name in st.session_state.capex_data:
+            st.error(f"The CapEx item '{new_capex_name}' already exists!")
 
-    # Energy Consumption Section
-    elif selected_section == "Energy Consumption":
-        st.subheader("Energy Consumption Configuration")
-        if "energy_data" not in st.session_state:
-            st.session_state.energy_data = model.energy_consumption.copy()
+    model.capex = st.session_state.capex_data
 
-        energy_to_delete = []
-        for key in list(st.session_state.energy_data.keys()):
-            col1, col2, col3 = st.columns([3, 2, 1])
-            with col1:
-                new_name = st.text_input(f"Edit Name: {key}", value=key, key=f"energy_name_{key}")
-            with col2:
-                new_consumption = st.number_input(
-                    f"Edit Consumption for {key} (kWh):",
-                    value=float(st.session_state.energy_data[key]),
-                    min_value=0.0,
-                    key=f"energy_consumption_{key}"
-                )
-            with col3:
-                if st.button("Remove", key=f"remove_energy_{key}"):
-                    energy_to_delete.append(key)
-            if new_name != key:
-                st.session_state.energy_data[new_name] = st.session_state.energy_data.pop(key)
-            st.session_state.energy_data[new_name] = new_consumption
+    # OpEx Section
+    st.subheader("OpEx Configuration")
+    if "opex_data" not in st.session_state:
+        st.session_state.opex_data = model.opex.copy()
 
-        for item in energy_to_delete:
-            del st.session_state.energy_data[item]
+    opex_to_delete = []
+    for key in list(st.session_state.opex_data.keys()):
+        col1, col2, col3 = st.columns([3, 2, 1])
+        with col1:
+            new_name = st.text_input(f"Edit Name: {key}", value=key, key=f"opex_name_{key}")
+        with col2:
+            new_cost = st.number_input(
+                f"Edit Cost for {key} (EUR/batch):",
+                value=float(st.session_state.opex_data[key]),
+                min_value=0.0,
+                key=f"opex_cost_{key}"
+            )
+        with col3:
+            if st.button("Remove", key=f"remove_opex_{key}"):
+                opex_to_delete.append(key)
+        if new_name != key:
+            st.session_state.opex_data[new_name] = st.session_state.opex_data.pop(key)
+        st.session_state.opex_data[new_name] = new_cost
 
-        st.markdown("**Add New Energy Equipment**")
-        new_energy_name = st.text_input("New Equipment Name for Energy Consumption:", key="new_energy_name")
-        new_energy_consumption = st.number_input(
-            "New Equipment Energy Consumption (kWh):",
-            min_value=0.0,
-            key="new_energy_consumption"
-        )
-        if st.button("Add Energy Equipment", key="add_energy"):
-            if new_energy_name and new_energy_name not in st.session_state.energy_data:
-                st.session_state.energy_data[new_energy_name] = new_energy_consumption
-                st.success(f"Added new energy equipment: {new_energy_name}")
-            elif new_energy_name in st.session_state.energy_data:
-                st.error(f"The energy equipment '{new_energy_name}' already exists!")
+    for item in opex_to_delete:
+        del st.session_state.opex_data[item]
 
-        model.energy_consumption = st.session_state.energy_data
+    st.markdown("**Add New OpEx Item**")
+    new_opex_name = st.text_input("New OpEx Name:", key="new_opex_name")
+    new_opex_cost = st.number_input("New OpEx Cost (EUR/batch):", min_value=0.0, key="new_opex_cost")
+    if st.button("Add OpEx", key="add_opex"):
+        if new_opex_name and new_opex_name not in st.session_state.opex_data:
+            st.session_state.opex_data[new_opex_name] = new_opex_cost
+            st.success(f"Added new OpEx item: {new_opex_name}")
+        elif new_opex_name in st.session_state.opex_data:
+            st.error(f"The OpEx item '{new_opex_name}' already exists!")
+
+    model.opex = st.session_state.opex_data
 
     # Results Section
-    elif selected_section == "Results":
-        st.subheader("Results")
-        capex_total, opex_total = model.calculate_totals()
-        st.write(f"**Total CapEx:** {capex_total} EUR")
-        st.write(f"**Total OpEx (including energy):** {opex_total} EUR/batch")
+    st.subheader("Results")
+    capex_total, opex_total = model.calculate_totals()
+    st.write(f"**Total CapEx:** {capex_total} EUR")
+    st.write(f"**Total OpEx (including energy):** {opex_total} EUR/batch")
 
-        st.subheader("CapEx Breakdown")
-        capex_chart_buf = model.generate_pie_chart(model.capex, "CapEx Breakdown")
-        st.image(capex_chart_buf, caption="CapEx Pie Chart", use_column_width=True)
-
-        st.subheader("OpEx Breakdown")
-        opex_chart_buf = model.generate_pie_chart(model.opex, "OpEx Breakdown")
-        st.image(opex_chart_buf, caption="OpEx Pie Chart", use_column_width=True)
-
-        st.subheader("CapEx Table")
-        capex_table = model.generate_table(model.capex)
-        st.table(capex_table)
-
-        st.subheader("OpEx Table")
-        opex_table = model.generate_table(model.opex)
-        st.table(opex_table)
 
 
 import pandas as pd
