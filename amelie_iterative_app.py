@@ -128,7 +128,6 @@ def economic_kpis():
             st.session_state.assumptions = [
                 "Batch Size (10 kg)",
                 "1 Operator per Batch",
-                "Energy Cost: 0.12 EUR/kWh",
                 "Process Includes: Pre-treatment, microwave thermal treatment, leaching in water, precipitation, secondary drying, leaching in acid, and wastewater treatment"
             ]
     
