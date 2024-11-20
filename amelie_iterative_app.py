@@ -315,6 +315,9 @@ def economic_kpis():
         capex_chart = model.generate_pie_chart(st.session_state.capex_data, "CapEx Breakdown")
         st.image(capex_chart, caption="CapEx Breakdown", use_column_width=True)
 
+        capex_table = model.generate_table(st.session_state.capex_data)
+        st.table(capex_table)
+
         opex_chart = model.generate_pie_chart(st.session_state.opex_data, "OpEx Breakdown")
         st.image(opex_chart, caption="OpEx Breakdown", use_column_width=True)
 
