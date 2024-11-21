@@ -702,24 +702,33 @@ def literature():
                 else:
                     st.error("Machine name is invalid or already exists!")
 
+            # Energy Cost Section (calculated as part of OpEx)
+            total_energy_consumption = sum(case_study["energy_consumption"].values())
+            energy_cost = total_energy_consumption * case_study.get("energy_cost", 0.0)
+
+            # Add energy cost to OpEx
+            case_study["opex"]["Energy"] = energy_cost
+
+            st.markdown(f"**Total Energy Cost (EUR):** {energy_cost:.2f}")
+
             # Direct Input for CapEx and OpEx
             st.markdown("#### Direct Input for Total CapEx and OpEx")
             direct_capex = st.number_input(
                 f"Total CapEx (EUR) for {case_study_name}:",
-                value=sum(case_study["capex"].values()),
+                value=float(sum(case_study["capex"].values())),
                 min_value=0.0,
                 key=f"direct_capex_{case_study_name}"
             )
             direct_opex = st.number_input(
                 f"Total OpEx (EUR) for {case_study_name}:",
-                value=sum(case_study["opex"].values()),
+                value=float(sum(case_study["opex"].values())),
                 min_value=0.0,
                 key=f"direct_opex_{case_study_name}"
             )
 
             if st.button(f"Update Total CapEx and OpEx for {case_study_name}", key=f"update_totals_{case_study_name}"):
-                case_study["capex"] = {"Total CapEx": direct_capex}
-                case_study["opex"] = {"Total OpEx": direct_opex}
+                case_study["capex"] = {"Total CapEx": float(direct_capex)}
+                case_study["opex"]["Direct OpEx"] = float(direct_opex)  # Keep other OpEx like energy
                 st.success("Total CapEx and OpEx updated!")
 
 
