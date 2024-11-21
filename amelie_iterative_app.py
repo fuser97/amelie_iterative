@@ -6,6 +6,19 @@ import streamlit as st
 import pandas as pd
 import io
 
+import json
+import os
+
+# Path to the JSON file
+case_studies_file = "case_studies.json"
+
+# Function to save case studies to the JSON file
+def save_case_studies():
+    with open(case_studies_file, "w") as file:
+        json.dump(st.session_state.case_studies, file, indent=4)
+
+
+
 # Configure the page layout
 st.set_page_config(
     page_title="Amelie KPI Tool",
@@ -513,7 +526,19 @@ def literature():
     st.title("Literature: Case Studies")
 
     # Add, remove, or edit case studies
+    # Path to the JSON file
+    case_studies_file = "case_studies.json"
+
+    # Load case studies from the file if not already loaded
+    if "case_studies" not in st.session_state:
+        if os.path.exists(case_studies_file):
+            with open(case_studies_file, "r") as file:
+                st.session_state.case_studies = json.load(file)
+        else:
+            st.session_state.case_studies = {}
+
     case_study_names = list(st.session_state.case_studies.keys())
+
     col1, col2 = st.columns([4, 1])
     with col1:
         selected_case_study = st.selectbox("Select or Add a Case Study:", case_study_names + ["Add New Case Study"],
@@ -521,8 +546,9 @@ def literature():
     with col2:
         if selected_case_study != "Add New Case Study" and st.button("Remove Case Study", key="remove_case_study"):
             del st.session_state.case_studies[selected_case_study]
+            save_case_studies()
             st.success(f"Case Study '{selected_case_study}' removed.")
-            return  # Stop execution to refresh the page after removal
+            return
 
     if selected_case_study == "Add New Case Study":
         new_case_study_name = st.text_input("New Case Study Name:")
@@ -532,11 +558,12 @@ def literature():
                     "assumptions": [],
                     "capex": {},
                     "opex": {},
-                    "energy_cost": 0.0,  # Generic energy cost (EUR per kWh)
-                    "energy_consumption": {}  # Energy consumption per machine
+                    "energy_cost": 0.0,
+                    "energy_consumption": {}
                 }
-
+                save_case_studies()
                 st.success(f"Case Study '{new_case_study_name}' created.")
+
             else:
                 st.error("Invalid or duplicate case study name!")
         return
@@ -763,6 +790,7 @@ def literature():
                 case_study["capex"] = {"Total CapEx": float(direct_capex)}
                 case_study["opex"]["Direct OpEx"] = float(direct_opex)  # Keep other OpEx like energy
                 st.success("Total CapEx and OpEx updated!")
+
 
 
 # Render the selected page
