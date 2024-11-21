@@ -692,7 +692,9 @@ def literature():
             if case_study["capex"]:
                 capex_data = {k: v for k, v in case_study["capex"].items() if v > 0}
             else:
-                capex_data = {"Direct Entry": float(case_study.get("capex_total", 0.0))}
+                # Usa il valore diretto di CapEx se specificato
+                direct_capex = case_study.get("capex_total", 0.0)
+                capex_data = {"Total CapEx (Direct)": float(direct_capex) if direct_capex > 0 else 1.0}
 
             # Ensure capex_data is not empty
             if not capex_data:
@@ -703,11 +705,12 @@ def literature():
             if not any(capex_data.values()):
                 capex_data = {"Fallback": 1.0}
 
-            
             if case_study["opex"]:
                 opex_data = {k: v for k, v in case_study["opex"].items() if v > 0}
             else:
-                opex_data = {"Direct Entry": float(case_study.get("opex_total", 0.0))}
+                # Usa il valore diretto di OpEx se specificato
+                direct_opex = case_study.get("opex_total", 0.0)
+                opex_data = {"Total OpEx (Direct)": float(direct_opex) if direct_opex > 0 else 1.0}
 
             # Ensure opex_data is not empty
             if not opex_data:
@@ -801,17 +804,18 @@ def literature():
             if st.button(f"Update Total CapEx and OpEx for {case_study_name}", key=f"update_totals_{case_study_name}"):
                 case_study["capex"] = {"Total CapEx": float(direct_capex)}
                 case_study["opex"]["Direct OpEx"] = float(direct_opex)  # Keep other OpEx like energy
+                save_case_studies()  # Salva i dati aggiornati
                 st.success("Total CapEx and OpEx updated!")
 
             capex_chart = model.generate_pie_chart(capex_data, f"CapEx Breakdown for {case_study_name}")
             st.image(capex_chart, caption="CapEx Breakdown", use_container_width=True)
-            
+
             capex_table = model.generate_table(capex_data)
             st.table(capex_table)
-                                   
+
             opex_chart = model.generate_pie_chart(opex_data, f"OpEx Breakdown for {case_study_name}")
             st.image(opex_chart, caption="OpEx Breakdown", use_container_width=True)
-        
+
             opex_table = model.generate_table(opex_data)
             st.table(opex_table)
 
