@@ -26,8 +26,9 @@ if "case_studies" not in st.session_state:
                 # Verifica che ogni case study sia un dizionario
                 if isinstance(loaded_data, dict):
                     for case_study_name, case_study in loaded_data.items():
+                        # Assicura che il valore sia un dizionario
                         if not isinstance(case_study, dict):
-                            # Se il valore non è un dizionario, lo sostituisci con una struttura valida
+                            # Sostituisci con una struttura vuota valida
                             loaded_data[case_study_name] = {
                                 "assumptions": [],
                                 "capex": {},
@@ -36,7 +37,7 @@ if "case_studies" not in st.session_state:
                                 "energy_consumption": {}
                             }
                         else:
-                            # Assicura che ogni chiave esista
+                            # Aggiungi chiavi mancanti con valori di default
                             case_study.setdefault("assumptions", [])
                             case_study.setdefault("capex", {})
                             case_study.setdefault("opex", {})
@@ -44,7 +45,7 @@ if "case_studies" not in st.session_state:
                             case_study.setdefault("energy_consumption", {})
                     st.session_state.case_studies = loaded_data
                 else:
-                    # Se il file non è strutturato come un dizionario, lo inizializzi
+                    # Se i dati non sono un dizionario, inizializza vuoto
                     st.session_state.case_studies = {}
             except json.JSONDecodeError:
                 st.warning("Case studies file is invalid. Starting with an empty state.")
@@ -52,6 +53,14 @@ if "case_studies" not in st.session_state:
     else:
         st.session_state.case_studies = {}
 
+
+def save_amelie_config():
+    try:
+        with open("amelie_config.json", "w") as file:
+            json.dump({"amelie_energy_cost": st.session_state.amelie_energy_cost}, file)
+        st.success("Amelie energy cost saved successfully.")
+    except Exception as e:
+        st.error(f"Failed to save Amelie config: {e}")
 
 
 # Configure the page layout
@@ -69,6 +78,22 @@ page = st.sidebar.radio("Select a Page:", ["Economic KPIs", "Technical KPIs", "L
 if "case_studies" not in st.session_state:
     st.session_state.case_studies = {}
 
+# Initialize session state for case studies
+if "case_studies" not in st.session_state:
+    st.session_state.case_studies = {}
+
+# Carica il valore di amelie_energy_cost se il file esiste
+if os.path.exists("amelie_config.json"):
+    with open("amelie_config.json", "r") as file:
+        try:
+            config_data = json.load(file)
+            st.session_state.amelie_energy_cost = config_data.get("amelie_energy_cost", 0.12)
+        except json.JSONDecodeError:
+            st.session_state.amelie_energy_cost = 0.12  # Valore predefinito in caso di errore
+
+# Inizializza il valore se non è stato caricato
+if "amelie_energy_cost" not in st.session_state:
+    st.session_state.amelie_energy_cost = 0.12  # Valore predefinito
 
 class AmelieEconomicModel:
     def __init__(self):
@@ -263,8 +288,9 @@ def economic_kpis():
             min_value=0.0,
             key="amelie_energy_cost_input"
         )
-        st.session_state.amelie_energy_cost = energy_cost  # Save to session state
-        model.energy_cost = energy_cost  # Update the model
+        st.session_state.amelie_energy_cost = energy_cost  # Salva il valore nello stato di sessione
+        model.energy_cost = energy_cost  # Aggiorna il modello con il valore corrente
+        save_amelie_config()
 
         # Add, edit, and delete energy equipment
         energy_to_delete = []
@@ -565,16 +591,30 @@ def technical_kpis():
 # Function to save case studies to the JSON file
 def save_case_studies():
     try:
-        # Assicurati che ogni case study abbia "energy_cost"
+        # Assicura che ogni case study abbia la struttura corretta
         for case_study_name, case_study in st.session_state.case_studies.items():
-            if "energy_cost" not in case_study:
-                case_study["energy_cost"] = st.session_state.get("amelie_energy_cost", 0.12)
+            if not isinstance(case_study, dict):
+                st.session_state.case_studies[case_study_name] = {
+                    "assumptions": [],
+                    "capex": {},
+                    "opex": {},
+                    "energy_cost": 0.12,
+                    "energy_consumption": {}
+                }
+            else:
+                case_study.setdefault("assumptions", [])
+                case_study.setdefault("capex", {})
+                case_study.setdefault("opex", {})
+                case_study.setdefault("energy_cost", 0.12)
+                case_study.setdefault("energy_consumption", {})
 
+        # Salva su file
         with open(case_studies_file, "w") as file:
             json.dump(st.session_state.case_studies, file, indent=4)
         st.info(f"Case studies saved to {case_studies_file}")
     except Exception as e:
         st.error(f"Failed to save case studies: {e}")
+
 
 
 def literature():
