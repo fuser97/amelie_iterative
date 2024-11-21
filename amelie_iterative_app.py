@@ -193,12 +193,21 @@ if selected_scenario == "Create New Scenario":
     new_scenario_name = st.sidebar.text_input("New Scenario Name:")
     if st.sidebar.button("Create Scenario"):
         if new_scenario_name and new_scenario_name not in st.session_state.amelie_scenarios:
-            # Duplica lo scenario corrente
-            st.session_state.amelie_scenarios[new_scenario_name] = st.session_state.amelie_scenarios["default"].copy()
+            # Crea uno scenario di default
+            default_scenario = {
+                "capex": model.capex.copy(),
+                "opex": model.opex.copy(),
+                "energy_cost": model.energy_cost,
+                "energy_consumption": model.energy_consumption.copy()
+            }
+            # Aggiungi il nuovo scenario
+            st.session_state.amelie_scenarios[new_scenario_name] = default_scenario
             st.success(f"Scenario '{new_scenario_name}' created.")
-            selected_scenario = new_scenario_name  # Seleziona automaticamente il nuovo scenario
+            # Aggiorna il selezionato
+            selected_scenario = new_scenario_name
         else:
             st.error("Invalid or duplicate scenario name!")
+
 
 # Sidebar navigation
 st.sidebar.title("Navigation")
@@ -786,8 +795,13 @@ def literature():
                     new_name = st.text_input(f"CapEx Name ({key}):", value=key,
                                              key=f"capex_name_{case_study_name}_{key}")
                 with col2:
-                    new_cost = st.number_input(f"CapEx Cost ({key}):", value=value, min_value=0.0,
-                                               key=f"capex_cost_{case_study_name}_{key}")
+                    new_cost = st.number_input(
+                        f"CapEx Cost ({key}):",
+                        value=float(value),  # Converti sempre in float
+                        min_value=0.0,
+                        key=f"capex_cost_{selected_scenario}_{key}"
+                    )
+
                 with col3:
                     if st.button(f"Remove CapEx ({key})", key=f"remove_capex_{case_study_name}_{key}"):
                         capex_to_delete.append(key)
