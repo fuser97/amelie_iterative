@@ -203,7 +203,7 @@ if selected_scenario == "Create New Scenario":
             # Aggiungi il nuovo scenario
             st.session_state.amelie_scenarios[new_scenario_name] = default_scenario
             st.success(f"Scenario '{new_scenario_name}' created.")
-            # Aggiorna il selezionato
+            # Cambia il selezionato al nuovo scenario creato
             selected_scenario = new_scenario_name
         else:
             st.error("Invalid or duplicate scenario name!")
@@ -241,17 +241,12 @@ st.title("Amelie Economic Model Configurator")
 def economic_kpis():
     st.title("Economic KPIs")
 
-    # Initialize session state
-    if "capex_data" not in st.session_state:
-        st.session_state.capex_data = model.capex.copy()
-    if "opex_data" not in st.session_state:
-        st.session_state.opex_data = model.opex.copy()
-    if "energy_data" not in st.session_state:
-        st.session_state.energy_data = model.energy_consumption.copy()
-    if "energy_cost" not in st.session_state:
-        st.session_state.energy_cost = 0.12  # Default value if not set
+    # Verifica se il selected_scenario è valido
+    if selected_scenario == "Create New Scenario":
+        st.warning("Please create a new scenario before proceeding.")
+        return  # Ferma l'esecuzione della funzione
 
-    # Carica i dati dello scenario selezionato
+    # Inizializza i dati dello scenario selezionato
     current_scenario = st.session_state.amelie_scenarios[selected_scenario]
 
     # Aggiorna i dati del modello con lo scenario corrente
@@ -705,6 +700,7 @@ def save_amelie_scenarios():
         st.error(f"Failed to save Amelie scenarios: {e}")
 
 
+
 def literature():
     st.title("Literature: Case Studies")
 
@@ -1001,7 +997,11 @@ elif page == "Literature":
 
 
 st.sidebar.title("Compare Scenarios")
-compare_scenarios = st.sidebar.multiselect("Select Scenarios to Compare:", scenario_names, default=["default"])
+compare_scenarios = st.sidebar.multiselect(
+    "Select Scenarios to Compare:",
+    [name for name in scenario_names if name != "Create New Scenario"],  # Escludi "Create New Scenario"
+    default=["default"]
+)
 
 if len(compare_scenarios) > 1:
     st.subheader("Comparison of Selected Scenarios")
@@ -1013,3 +1013,4 @@ if len(compare_scenarios) > 1:
     }
     comparison_df = pd.DataFrame(comparison_data)
     st.table(comparison_df)
+
