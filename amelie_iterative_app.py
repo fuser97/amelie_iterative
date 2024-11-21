@@ -22,10 +22,19 @@ if "case_studies" not in st.session_state:
     if os.path.exists(case_studies_file):
         with open(case_studies_file, "r") as file:
             st.session_state.case_studies = json.load(file)
-            st.session_state.amelie_energy_cost = st.session_state.case_studies.get("energy_cost", 0.12)
-
+        # Assicura che ogni case study abbia tutte le chiavi necessarie
+        for case_study_name, case_study in st.session_state.case_studies.items():
+            if "energy_cost" not in case_study:
+                case_study["energy_cost"] = 0.12  # Default value
+            if "assumptions" not in case_study:
+                case_study["assumptions"] = []
+            if "capex" not in case_study:
+                case_study["capex"] = {}
+            if "opex" not in case_study:
+                case_study["opex"] = {}
     else:
         st.session_state.case_studies = {}
+
 
 # Configure the page layout
 st.set_page_config(
@@ -538,8 +547,10 @@ def technical_kpis():
 # Function to save case studies to the JSON file
 def save_case_studies():
     try:
-        # Salva anche il costo dell'energia nel file JSON
-        st.session_state.case_studies["energy_cost"] = st.session_state.get("amelie_energy_cost", 0.12)
+        # Assicurati che ogni case study abbia "energy_cost"
+        for case_study_name, case_study in st.session_state.case_studies.items():
+            if "energy_cost" not in case_study:
+                case_study["energy_cost"] = st.session_state.get("amelie_energy_cost", 0.12)
 
         with open(case_studies_file, "w") as file:
             json.dump(st.session_state.case_studies, file, indent=4)
@@ -601,6 +612,8 @@ def literature():
                 case_study["capex"] = {}
             if "opex" not in case_study:
                 case_study["opex"] = {}
+            if "energy_cost" not in case_study:
+                case_study["energy_cost"] = 0.12  # Default value
 
             # Assumptions Section
             st.markdown("#### Assumptions")
@@ -734,11 +747,11 @@ def literature():
             st.markdown("#### Energy Cost")
             case_study["energy_cost"] = st.number_input(
                 f"Energy Cost (EUR per kWh) for {case_study_name}:",
-                value=case_study.get("energy_cost", 0.0),
+                value=case_study.get("energy_cost", 0.12),  # Default value if missing
                 min_value=0.0,
                 key=f"energy_cost_{case_study_name}"
             )
-            save_case_studies()  # Salva le modifiche
+            save_case_studies()  # Salva automaticamente al cambio del valore
 
             # Energy Consumption Section
             st.markdown("#### Energy Consumption per Machine")
