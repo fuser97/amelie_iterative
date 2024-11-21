@@ -614,15 +614,21 @@ def literature():
         else:
             st.error("OpEx item already exists or name is invalid!")
 
-    # Generate Pie Charts
+    # Generate Pie Charts and Tables
     st.markdown("### Visualization")
     if case_study["capex"]:
+        st.markdown("#### CapEx Breakdown")
         capex_chart = model.generate_pie_chart(case_study["capex"], f"CapEx Breakdown for {selected_case_study}")
-        st.image(capex_chart, caption="CapEx Breakdown", use_column_width=True)
+        st.image(capex_chart, caption="CapEx Breakdown", use_container_width=True)
+        capex_table = model.generate_table(case_study["capex"])
+        st.table(capex_table)
 
     if case_study["opex"]:
+        st.markdown("#### OpEx Breakdown")
         opex_chart = model.generate_pie_chart(case_study["opex"], f"OpEx Breakdown for {selected_case_study}")
-        st.image(opex_chart, caption="OpEx Breakdown", use_column_width=True)
+        st.image(opex_chart, caption="OpEx Breakdown", use_container_width=True)
+        opex_table = model.generate_table(case_study["opex"])
+        st.table(opex_table)
 
 
 # Render the selected page
