@@ -53,91 +53,7 @@ if "case_studies" not in st.session_state:
     else:
         st.session_state.case_studies = {}
 
-amelie_scenarios_file = os.path.join(data_dir, "amelie_scenarios.json")
 
-# Load Amelie scenarios into session state on app start
-if "amelie_scenarios" not in st.session_state:
-    if os.path.exists(amelie_scenarios_file):
-        with open(amelie_scenarios_file, "r") as file:
-            try:
-                st.session_state.amelie_scenarios = json.load(file)
-            except json.JSONDecodeError:
-                st.warning("Amelie scenarios file is invalid. Starting with default scenario.")
-                st.session_state.amelie_scenarios = {
-                    "default": {
-                        "capex": model.capex.copy(),  # Usa i valori di default attuali
-                        "opex": model.opex.copy(),
-                        "energy_cost": 0.12,
-                        "energy_consumption": model.energy_consumption.copy()
-                    }
-                }
-    else:
-        # Se il file non esiste, inizializza con lo scenario di default
-        st.session_state.amelie_scenarios = {
-            "default": {
-                "capex": model.capex.copy(),
-                "opex": model.opex.copy(),
-                "energy_cost": 0.12,
-                "energy_consumption": model.energy_consumption.copy()
-            }
-        }
-
-
-def save_amelie_config():
-    try:
-        with open("amelie_config.json", "w") as file:
-            json.dump({"amelie_energy_cost": st.session_state.amelie_energy_cost}, file)
-        st.success("Amelie energy cost saved successfully.")
-    except Exception as e:
-        st.error(f"Failed to save Amelie config: {e}")
-
-
-# Configure the page layout
-st.set_page_config(
-    page_title="Amelie KPI Tool",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
-st.sidebar.title("Amelie Scenarios")
-scenario_names = list(st.session_state.amelie_scenarios.keys())
-
-selected_scenario = st.sidebar.selectbox("Select Amelie Scenario:", scenario_names + ["Create New Scenario"])
-
-if selected_scenario == "Create New Scenario":
-    new_scenario_name = st.sidebar.text_input("New Scenario Name:")
-    if st.sidebar.button("Create Scenario"):
-        if new_scenario_name and new_scenario_name not in st.session_state.amelie_scenarios:
-            # Duplica lo scenario corrente
-            st.session_state.amelie_scenarios[new_scenario_name] = st.session_state.amelie_scenarios["default"].copy()
-            st.success(f"Scenario '{new_scenario_name}' created.")
-            selected_scenario = new_scenario_name  # Seleziona automaticamente il nuovo scenario
-        else:
-            st.error("Invalid or duplicate scenario name!")
-
-# Sidebar navigation
-st.sidebar.title("Navigation")
-page = st.sidebar.radio("Select a Page:", ["Economic KPIs", "Technical KPIs", "Literature"])
-
-# Initialize session state for case studies
-if "case_studies" not in st.session_state:
-    st.session_state.case_studies = {}
-
-# Initialize session state for case studies
-if "case_studies" not in st.session_state:
-    st.session_state.case_studies = {}
-
-# Carica il valore di amelie_energy_cost se il file esiste
-if os.path.exists("amelie_config.json"):
-    with open("amelie_config.json", "r") as file:
-        try:
-            config_data = json.load(file)
-            st.session_state.amelie_energy_cost = config_data.get("amelie_energy_cost", 0.12)
-        except json.JSONDecodeError:
-            st.session_state.amelie_energy_cost = 0.12  # Valore predefinito in caso di errore
-
-# Inizializza il valore se non è stato caricato
-if "amelie_energy_cost" not in st.session_state:
-    st.session_state.amelie_energy_cost = 0.12  # Valore predefinito
 
 class AmelieEconomicModel:
     def __init__(self):
@@ -225,6 +141,89 @@ class AmelieEconomicModel:
 
 # Initialize Model
 model = AmelieEconomicModel()
+
+amelie_scenarios_file = os.path.join(data_dir, "amelie_scenarios.json")
+
+# Load Amelie scenarios into session state on app start
+if "amelie_scenarios" not in st.session_state:
+    if os.path.exists(amelie_scenarios_file):
+        with open(amelie_scenarios_file, "r") as file:
+            try:
+                st.session_state.amelie_scenarios = json.load(file)
+            except json.JSONDecodeError:
+                st.warning("Amelie scenarios file is invalid. Starting with default scenario.")
+                st.session_state.amelie_scenarios = {"default": {
+                    "capex": model.capex.copy(),
+                    "opex": model.opex.copy(),
+                    "energy_cost": model.energy_cost,
+                    "energy_consumption": model.energy_consumption.copy()
+                }}
+    else:
+        # Se il file non esiste, inizializza con lo scenario di default
+        st.session_state.amelie_scenarios = {"default": {
+            "capex": model.capex.copy(),
+            "opex": model.opex.copy(),
+            "energy_cost": model.energy_cost,
+            "energy_consumption": model.energy_consumption.copy()
+        }}
+
+
+
+def save_amelie_config():
+    try:
+        with open("amelie_config.json", "w") as file:
+            json.dump({"amelie_energy_cost": st.session_state.amelie_energy_cost}, file)
+        st.success("Amelie energy cost saved successfully.")
+    except Exception as e:
+        st.error(f"Failed to save Amelie config: {e}")
+
+
+# Configure the page layout
+st.set_page_config(
+    page_title="Amelie KPI Tool",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+st.sidebar.title("Amelie Scenarios")
+scenario_names = list(st.session_state.amelie_scenarios.keys())
+
+selected_scenario = st.sidebar.selectbox("Select Amelie Scenario:", scenario_names + ["Create New Scenario"])
+
+if selected_scenario == "Create New Scenario":
+    new_scenario_name = st.sidebar.text_input("New Scenario Name:")
+    if st.sidebar.button("Create Scenario"):
+        if new_scenario_name and new_scenario_name not in st.session_state.amelie_scenarios:
+            # Duplica lo scenario corrente
+            st.session_state.amelie_scenarios[new_scenario_name] = st.session_state.amelie_scenarios["default"].copy()
+            st.success(f"Scenario '{new_scenario_name}' created.")
+            selected_scenario = new_scenario_name  # Seleziona automaticamente il nuovo scenario
+        else:
+            st.error("Invalid or duplicate scenario name!")
+
+# Sidebar navigation
+st.sidebar.title("Navigation")
+page = st.sidebar.radio("Select a Page:", ["Economic KPIs", "Technical KPIs", "Literature"])
+
+# Initialize session state for case studies
+if "case_studies" not in st.session_state:
+    st.session_state.case_studies = {}
+
+# Initialize session state for case studies
+if "case_studies" not in st.session_state:
+    st.session_state.case_studies = {}
+
+# Carica il valore di amelie_energy_cost se il file esiste
+if os.path.exists("amelie_config.json"):
+    with open("amelie_config.json", "r") as file:
+        try:
+            config_data = json.load(file)
+            st.session_state.amelie_energy_cost = config_data.get("amelie_energy_cost", 0.12)
+        except json.JSONDecodeError:
+            st.session_state.amelie_energy_cost = 0.12  # Valore predefinito in caso di errore
+
+# Inizializza il valore se non è stato caricato
+if "amelie_energy_cost" not in st.session_state:
+    st.session_state.amelie_energy_cost = 0.12  # Valore predefinito
 
 # Streamlit App
 st.title("Amelie Economic Model Configurator")
