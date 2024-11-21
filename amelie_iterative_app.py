@@ -1,5 +1,4 @@
 import matplotlib
-
 matplotlib.use('Agg')  # Required for Streamlit compatibility
 import matplotlib.pyplot as plt
 import streamlit as st
@@ -12,6 +11,7 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
 
 # Sidebar navigation
 st.sidebar.title("Navigation")
@@ -100,7 +100,6 @@ model = AmelieEconomicModel()
 # Streamlit App
 st.title("Amelie Economic Model Configurator")
 
-
 def economic_kpis():
     st.title("Economic KPIs")
 
@@ -109,34 +108,63 @@ def economic_kpis():
         st.session_state.capex_data = model.capex.copy()
     if "opex_data" not in st.session_state:
         st.session_state.opex_data = model.opex.copy()
-    if "amelie_assumptions" not in st.session_state:
-        st.session_state.amelie_assumptions = [
-            "Batch Size (10 kg)",
-            "1 Operator per Batch",
-            "Process Includes: Pre-treatment, leaching, drying, and wastewater treatment"
-        ]
-    if "case_studies" not in st.session_state:
-        st.session_state.case_studies = {}
+    if "energy_data" not in st.session_state:
+        st.session_state.energy_data = model.energy_consumption.copy()
+    if "energy_cost" not in st.session_state:
+        st.session_state.energy_cost = 0.12  # Default value if not set
 
     # Add a section dropdown
-    sections = ["Amelie Configuration", "Case Studies", "Benchmark", "Results"]
+    sections = ["General Assumptions", "CapEx Configuration", "OpEx Configuration", "Results"]
     selected_section = st.selectbox("Jump to Section:", sections)
 
-    # Amelie Configuration
-    if selected_section == "Amelie Configuration":
-        st.subheader("Amelie Configuration")
+    # General Assumptions Section
+    if selected_section == "General Assumptions":
+        st.subheader("General Assumptions")
+        if "assumptions" not in st.session_state:
+            st.session_state.assumptions = [
+                "Batch Size (10 kg)",
+                "1 Operator per Batch",
+                "Process Includes: Pre-treatment, microwave thermal treatment, leaching in water, precipitation, secondary drying, leaching in acid, and wastewater treatment"
+            ]
 
-        # CapEx Configuration
-        st.markdown("### CapEx Configuration")
+        # Display assumptions
+        assumptions_to_delete = []
+        for idx, assumption in enumerate(st.session_state.assumptions):
+            col1, col2 = st.columns([4, 1])
+            with col1:
+                st.text_input(f"Edit Assumption {idx + 1}:", value=assumption, key=f"assumption_{idx}")
+            with col2:
+                if st.button("Remove", key=f"remove_assumption_{idx}"):
+                    assumptions_to_delete.append(idx)
+
+        for idx in sorted(assumptions_to_delete, reverse=True):
+            st.session_state.assumptions.pop(idx)
+
+        # Add new assumption
+        new_assumption = st.text_input("New Assumption:", key="new_assumption")
+        if st.button("Add Assumption", key="add_assumption"):
+            if new_assumption:
+                st.session_state.assumptions.append(new_assumption)
+                st.success(f"Added new assumption: {new_assumption}")
+            else:
+                st.error("Assumption cannot be empty!")
+
+        st.markdown("### Current Assumptions")
+        for idx, assumption in enumerate(st.session_state.assumptions, 1):
+            st.write(f"{idx}. {assumption}")
+
+    # CapEx Configuration Section
+    elif selected_section == "CapEx Configuration":
+        st.subheader("CapEx Configuration")
         capex_to_delete = []
         for key, value in st.session_state.capex_data.items():
             col1, col2, col3 = st.columns([3, 2, 1])
             with col1:
-                new_name = st.text_input(f"Edit Name: {key}", value=key, key=f"amelie_capex_name_{key}")
+                new_name = st.text_input(f"Edit Name: {key}", value=key, key=f"capex_name_{key}")
             with col2:
-                new_cost = st.number_input(f"Edit Cost (EUR):", value=float(value), min_value=0.0, key=f"amelie_capex_cost_{key}")
+                new_cost = st.number_input(f"Edit Cost (EUR):", value=float(value), min_value=0.0, key=f"capex_cost_{key}")
             with col3:
-                if st.button("Remove", key=f"amelie_remove_capex_{key}"):
+                if st.button("Remove", key=f"remove_capex_{key}"):
                     capex_to_delete.append(key)
             if new_name != key:
                 st.session_state.capex_data[new_name] = st.session_state.capex_data.pop(key)
@@ -144,8 +172,8 @@ def economic_kpis():
         for item in capex_to_delete:
             del st.session_state.capex_data[item]
 
-        new_name = st.text_input("New CapEx Name:", key="amelie_new_capex_name")
-        new_cost = st.number_input("New CapEx Cost (EUR):", min_value=0.0, key="amelie_new_capex_cost")
+        new_name = st.text_input("New CapEx Name:", key="new_capex_name")
+        new_cost = st.number_input("New CapEx Cost (EUR):", min_value=0.0, key="new_capex_cost")
         if st.button("Add CapEx"):
             if new_name and new_name not in st.session_state.capex_data:
                 st.session_state.capex_data[new_name] = new_cost
@@ -153,140 +181,152 @@ def economic_kpis():
             else:
                 st.error("CapEx item already exists or name is invalid!")
 
-        # OpEx Configuration
-        st.markdown("### OpEx Configuration")
-        opex_to_delete = []
-        for key, value in st.session_state.opex_data.items():
+        model.capex = st.session_state.capex_data
+
+        # OpEx Configuration Section
+    elif selected_section == "OpEx Configuration":
+        st.subheader("OpEx Configuration")
+    
+        # Temporary variables
+        energy_data_temp = st.session_state.energy_data.copy()
+        opex_data_temp = st.session_state.opex_data.copy()
+    
+        # Energy Configuration
+        st.markdown("### Energy Configuration")
+        
+        # Update energy cost
+        energy_cost = st.number_input(
+            "Cost per kWh (EUR):",
+            value=st.session_state.get("energy_cost", 0.12),
+            min_value=0.0,
+            key="energy_cost_input"  # Unique key for the energy cost input
+        )
+        st.session_state.energy_cost = energy_cost  # Update session state
+    
+        # Add, edit, and delete energy equipment
+        energy_to_delete = []
+        for key, value in energy_data_temp.items():
             col1, col2, col3 = st.columns([3, 2, 1])
             with col1:
-                new_name = st.text_input(f"Edit Name: {key}", value=key, key=f"amelie_opex_name_{key}")
+                new_name = st.text_input(
+                    f"Edit Energy Equipment ({key}):", 
+                    value=key, 
+                    key=f"energy_name_{key}"
+                )
             with col2:
-                new_cost = st.number_input(f"Edit Cost (EUR):", value=float(value), min_value=0.0, key=f"amelie_opex_cost_{key}")
+                new_consumption = st.number_input(
+                    f"Energy Consumption (kWh) for {key}:",
+                    value=float(value),
+                    min_value=0.0,
+                    key=f"energy_value_{key}"
+                )
             with col3:
-                if st.button("Remove", key=f"amelie_remove_opex_{key}"):
-                    opex_to_delete.append(key)
+                if st.button(f"Remove {key}", key=f"remove_energy_{key}"):
+                    energy_to_delete.append(key)
+    
+            # Update temporary energy data
             if new_name != key:
-                st.session_state.opex_data[new_name] = st.session_state.opex_data.pop(key)
-            st.session_state.opex_data[new_name] = new_cost
+                energy_data_temp[new_name] = energy_data_temp.pop(key)
+            energy_data_temp[new_name] = new_consumption
+    
+        # Remove deleted energy items
+        for item in energy_to_delete:
+            del energy_data_temp[item]
+    
+        # Add new energy equipment
+        st.markdown("**Add New Energy Equipment**")
+        new_energy_name = st.text_input("New Equipment Name:", key="new_energy_name_input")
+        new_energy_value = st.number_input("Energy Consumption (kWh):", min_value=0.0, key="new_energy_value_input")
+        if st.button("Add Energy Equipment", key="add_energy_input"):
+            if new_energy_name and new_energy_name not in energy_data_temp:
+                energy_data_temp[new_energy_name] = new_energy_value
+                st.success(f"Added new energy equipment: {new_energy_name}")
+            else:
+                st.error("Energy equipment already exists or name is invalid!")
+    
+        # Calculate total energy cost dynamically
+        total_energy_consumption = sum(energy_data_temp.values())
+        total_energy_cost = total_energy_consumption * energy_cost
+        opex_data_temp["Energy"] = total_energy_cost
+    
+        # Display total energy cost
+        st.markdown(f"**Total Energy Cost:** {total_energy_cost:.2f} EUR")
+    
+        # General OpEx Configuration
+        st.markdown("### General OpEx Configuration")
+        opex_to_delete = []
+        for key, value in opex_data_temp.items():
+            if key != "Energy":  # Skip energy as it is dynamically calculated
+                col1, col2, col3 = st.columns([3, 2, 1])
+                with col1:
+                    new_name = st.text_input(
+                        f"Edit Name ({key}):", 
+                        value=key, 
+                        key=f"opex_name_{key}"
+                    )
+                with col2:
+                    new_cost = st.number_input(
+                        f"Edit Cost (EUR) for {key}:",
+                        value=float(value),
+                        min_value=0.0,
+                        key=f"opex_cost_{key}"
+                    )
+                with col3:
+                    if st.button(f"Remove {key}", key=f"remove_opex_{key}"):
+                        opex_to_delete.append(key)
+    
+                # Update temporary OpEx data
+                if new_name != key:
+                    opex_data_temp[new_name] = opex_data_temp.pop(key)
+                opex_data_temp[new_name] = new_cost
+    
+        # Remove deleted OpEx items
         for item in opex_to_delete:
-            del st.session_state.opex_data[item]
-
-        new_name = st.text_input("New OpEx Name:", key="amelie_new_opex_name")
-        new_cost = st.number_input("New OpEx Cost (EUR):", min_value=0.0, key="amelie_new_opex_cost")
-        if st.button("Add OpEx"):
-            if new_name and new_name not in st.session_state.opex_data:
-                st.session_state.opex_data[new_name] = new_cost
-                st.success(f"Added new OpEx item: {new_name}")
+            del opex_data_temp[item]
+    
+        # Add new OpEx item
+        st.markdown("**Add New OpEx Item**")
+        new_opex_name = st.text_input("New OpEx Name:", key="new_opex_name_input")
+        new_opex_cost = st.number_input("New OpEx Cost (EUR):", min_value=0.0, key="new_opex_cost_input")
+        if st.button("Add OpEx", key="add_opex_input"):
+            if new_opex_name and new_opex_name not in opex_data_temp:
+                opex_data_temp[new_opex_name] = new_opex_cost
+                st.success(f"Added new OpEx item: {new_opex_name}")
             else:
                 st.error("OpEx item already exists or name is invalid!")
-
-        # Assumptions
-        st.markdown("### Assumptions")
-        assumptions_to_delete = []
-        for idx, assumption in enumerate(st.session_state.amelie_assumptions):
-            col1, col2 = st.columns([4, 1])
-            with col1:
-                st.text_input(f"Edit Assumption {idx + 1}:", value=assumption, key=f"amelie_assumption_{idx}")
-            with col2:
-                if st.button("Remove", key=f"amelie_remove_assumption_{idx}"):
-                    assumptions_to_delete.append(idx)
-
-        for idx in sorted(assumptions_to_delete, reverse=True):
-            st.session_state.amelie_assumptions.pop(idx)
-
-        new_assumption = st.text_input("New Assumption:", key="amelie_new_assumption")
-        if st.button("Add Assumption"):
-            if new_assumption:
-                st.session_state.amelie_assumptions.append(new_assumption)
-                st.success(f"Added new assumption: {new_assumption}")
-            else:
-                st.error("Assumption cannot be empty!")
-
-    # Case Studies
-    elif selected_section == "Case Studies":
-        st.subheader("Case Studies")
-
-        # Add new case study
-        st.markdown("### Add New Case Study")
-        case_study_name = st.text_input("Case Study Name:")
-        if case_study_name and case_study_name not in st.session_state.case_studies:
-            if st.button("Add Case Study"):
-                st.session_state.case_studies[case_study_name] = {
-                    "CapEx": {},
-                    "OpEx": {},
-                    "Assumptions": []
-                }
-                st.success(f"Added case study: {case_study_name}")
-
-        # Manage existing case studies
-        for case_study_name, data in st.session_state.case_studies.items():
-            with st.expander(f"Case Study: {case_study_name}", expanded=False):
-                # CapEx
-                st.markdown("#### CapEx Configuration")
-                for category, value in st.session_state.capex_data.items():
-                    data["CapEx"][category] = st.number_input(
-                        f"CapEx ({category}) for {case_study_name}:",
-                        value=data["CapEx"].get(category, 0.0),
-                        min_value=0.0,
-                        key=f"{case_study_name}_capex_{category}"
-                    )
-
-                # OpEx
-                st.markdown("#### OpEx Configuration")
-                for category, value in st.session_state.opex_data.items():
-                    data["OpEx"][category] = st.number_input(
-                        f"OpEx ({category}) for {case_study_name}:",
-                        value=data["OpEx"].get(category, 0.0),
-                        min_value=0.0,
-                        key=f"{case_study_name}_opex_{category}"
-                    )
-
-                # Assumptions
-                st.markdown("#### Assumptions")
-                for idx, assumption in enumerate(data["Assumptions"]):
-                    data["Assumptions"][idx] = st.text_input(
-                        f"Assumption {idx + 1} for {case_study_name}:",
-                        value=assumption,
-                        key=f"{case_study_name}_assumption_{idx}"
-                    )
-
-                new_assumption = st.text_input(f"New Assumption for {case_study_name}:", key=f"{case_study_name}_new_assumption")
-                if st.button(f"Add Assumption for {case_study_name}"):
-                    if new_assumption:
-                        data["Assumptions"].append(new_assumption)
-                        st.success(f"Added assumption for {case_study_name}: {new_assumption}")
-
-    # Benchmark
-    elif selected_section == "Benchmark":
-        st.subheader("Benchmark Comparison")
-
-        # Display Amelie and case studies
-        st.markdown("### Amelie vs Case Studies")
-        benchmark_results = []
-        for case_study_name, data in st.session_state.case_studies.items():
-            for category in st.session_state.capex_data.keys():
-                benchmark_results.append({
-                    "Category": f"CapEx - {category}",
-                    "Amelie Value": st.session_state.capex_data[category],
-                    "Case Study": case_study_name,
-                    "Case Study Value": data["CapEx"].get(category, 0.0)
-                })
-            for category in st.session_state.opex_data.keys():
-                benchmark_results.append({
-                    "Category": f"OpEx - {category}",
-                    "Amelie Value": st.session_state.opex_data[category],
-                    "Case Study": case_study_name,
-                    "Case Study Value": data["OpEx"].get(category, 0.0)
-                })
-        benchmark_df = pd.DataFrame(benchmark_results)
-        st.table(benchmark_df)
+    
+        # Update session state in bulk
+        st.session_state.energy_data = energy_data_temp
+        st.session_state.opex_data = opex_data_temp
+        st.session_state.energy_cost = energy_cost
+    
+        # Update the model
+        model.opex = st.session_state.opex_data
+        model.energy_consumption = st.session_state.energy_data
 
 
+    # Results Section
+    elif selected_section == "Results":
+        st.subheader("Results")
+        capex_total, opex_total = model.calculate_totals()
+        st.write(f"**Total CapEx:** {capex_total} EUR")
+        st.write(f"**Total OpEx (including energy):** {opex_total} EUR")
+
+        capex_chart = model.generate_pie_chart(st.session_state.capex_data, "CapEx Breakdown")
+        st.image(capex_chart, caption="CapEx Breakdown", use_column_width=True)
+
+        capex_table = model.generate_table(st.session_state.capex_data)
+        st.table(capex_table)
+
+        opex_chart = model.generate_pie_chart(st.session_state.opex_data, "OpEx Breakdown")
+        st.image(opex_chart, caption="OpEx Breakdown", use_column_width=True)
+
+        opex_table = model.generate_table(st.session_state.opex_data)
+        st.table(opex_table)
 
 
 import pandas as pd
 import streamlit as st
-
 
 def technical_kpis():
     st.title("Technical KPIs: Efficiency and Solid/Liquid Ratios")
@@ -307,8 +347,7 @@ def technical_kpis():
         for material, percentage in list(st.session_state.composition.items()):
             col1, col2, col3 = st.columns([2, 1, 1])
             with col1:
-                new_material = st.text_input(f"Edit Material Name ({material})", value=material,
-                                             key=f"edit_material_{material}")
+                new_material = st.text_input(f"Edit Material Name ({material})", value=material, key=f"edit_material_{material}")
             with col2:
                 new_percentage = st.number_input(
                     f"Percentage of {material} in BM (%)",
@@ -326,8 +365,7 @@ def technical_kpis():
 
         st.markdown("**Add New Material**")
         new_material_name = st.text_input("New Material Name", key="new_material_name")
-        new_material_percentage = st.number_input("New Material Percentage (%)", min_value=0.0, max_value=100.0,
-                                                  key="new_material_percentage")
+        new_material_percentage = st.number_input("New Material Percentage (%)", min_value=0.0, max_value=100.0, key="new_material_percentage")
         if st.button("Add Material"):
             if new_material_name and new_material_name not in updated_composition:
                 updated_composition[new_material_name] = new_material_percentage
@@ -338,8 +376,7 @@ def technical_kpis():
         st.session_state.composition = updated_composition
 
         if total_percentage > 100:
-            st.warning(
-                f"Total material composition exceeds 100% (currently {total_percentage:.2f}%). Adjust values accordingly.")
+            st.warning(f"Total material composition exceeds 100% (currently {total_percentage:.2f}%). Adjust values accordingly.")
         elif total_percentage < 100:
             st.info(f"Total material composition is below 100% (currently {total_percentage:.2f}%).")
 
@@ -359,8 +396,7 @@ def technical_kpis():
             recovered_masses[material] = recovered_mass
 
         efficiencies = {}
-        total_black_mass = st.sidebar.number_input("Total Black Mass (kg):", min_value=0.1, value=10.0, step=0.1,
-                                                   key="total_black_mass")
+        total_black_mass = st.sidebar.number_input("Total Black Mass (kg):", min_value=0.1, value=10.0, step=0.1, key="total_black_mass")
         total_recovered_mass = 0
 
         for material, percentage in st.session_state.composition.items():
@@ -389,8 +425,7 @@ def technical_kpis():
         if "phases" not in st.session_state:
             st.session_state.phases = {
                 "Leaching in Water": {"liquids": [{"type": "Water", "volume": 20.0}], "mass": 5.0},
-                "Leaching in Acid": {
-                    "liquids": [{"type": "Malic Acid", "volume": 5.0}, {"type": "Water", "volume": 2.0}], "mass": 5.0}
+                "Leaching in Acid": {"liquids": [{"type": "Malic Acid", "volume": 5.0}, {"type": "Water", "volume": 2.0}], "mass": 5.0}
             }
 
         phases = st.session_state.phases
@@ -402,8 +437,7 @@ def technical_kpis():
             updated_liquids = []
 
             phase_mass = st.number_input(
-                f"Mass for {phase_name} (kg):", min_value=0.0, value=phase_data.get("mass", 0.0), step=0.1,
-                key=f"mass_{phase_name}"
+                f"Mass for {phase_name} (kg):", min_value=0.0, value=phase_data.get("mass", 0.0), step=0.1, key=f"mass_{phase_name}"
             )
 
             for idx, liquid in enumerate(liquids):
@@ -414,8 +448,7 @@ def technical_kpis():
                     )
                 with col2:
                     liquid_volume = st.number_input(
-                        f"Volume ({liquid['type']}, L):", min_value=0.0, value=liquid["volume"], step=0.1,
-                        key=f"volume_{phase_name}_{idx}"
+                        f"Volume ({liquid['type']}, L):", min_value=0.0, value=liquid["volume"], step=0.1, key=f"volume_{phase_name}_{idx}"
                     )
                 with col3:
                     if st.button(f"Remove {liquid['type']}", key=f"remove_{phase_name}_{idx}"):
@@ -454,7 +487,6 @@ def technical_kpis():
 
         sl_df = pd.DataFrame(sl_results)
         st.table(sl_df)
-
 
 # Render the selected page
 if page == "Economic KPIs":
