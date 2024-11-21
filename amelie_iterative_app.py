@@ -548,7 +548,7 @@ def literature():
     # Path to the JSON file
     case_studies_file = "case_studies.json"
 
-   
+
 
     case_study_names = list(st.session_state.case_studies.keys())
 
@@ -615,6 +615,7 @@ def literature():
             if st.button(f"Add Assumption", key=f"add_assumption_{case_study_name}"):
                 if new_assumption:
                     case_study["assumptions"].append(new_assumption)
+                    save_case_studies()  # Salva le modifiche
                     st.success("New assumption added!")
                 else:
                     st.error("Assumption cannot be empty!")
@@ -647,6 +648,7 @@ def literature():
             if st.button(f"Add CapEx for {case_study_name}"):
                 if new_capex_name and new_capex_name not in case_study["capex"]:
                     case_study["capex"][new_capex_name] = new_capex_cost
+                    save_case_studies()  # Salva le modifiche
                     st.success("New CapEx item added!")
                 else:
                     st.error("CapEx item already exists or name is invalid!")
@@ -678,6 +680,7 @@ def literature():
             if st.button(f"Add OpEx for {case_study_name}"):
                 if new_opex_name and new_opex_name not in case_study["opex"]:
                     case_study["opex"][new_opex_name] = new_opex_cost
+                    save_case_studies()  # Salva le modifiche
                     st.success("New OpEx item added!")
                 else:
                     st.error("OpEx item already exists or name is invalid!")
@@ -732,6 +735,7 @@ def literature():
                 min_value=0.0,
                 key=f"energy_cost_{case_study_name}"
             )
+            save_case_studies()  # Salva le modifiche
 
             # Energy Consumption Section
             st.markdown("#### Energy Consumption per Machine")
@@ -771,6 +775,7 @@ def literature():
             if st.button(f"Add Machine for {case_study_name}", key=f"add_machine_{case_study_name}"):
                 if new_machine_name and new_machine_name not in case_study["energy_consumption"]:
                     case_study["energy_consumption"][new_machine_name] = new_machine_consumption
+                    save_case_studies()  # Salva le modifiche
                     st.success(f"Added new machine: {new_machine_name}")
                 else:
                     st.error("Machine name is invalid or already exists!")
