@@ -657,18 +657,20 @@ def literature():
             st.markdown("#### OpEx")
             opex_to_delete = []
             for key, value in case_study["opex"].items():
-                col1, col2, col3 = st.columns([3, 2, 1])
-                with col1:
-                    new_name = st.text_input(f"OpEx Name ({key}):", value=key, key=f"opex_name_{case_study_name}_{key}")
-                with col2:
-                    new_cost = st.number_input(f"OpEx Cost ({key}):", value=value, min_value=0.0,
-                                               key=f"opex_cost_{case_study_name}_{key}")
-                with col3:
-                    if st.button(f"Remove OpEx ({key})", key=f"remove_opex_{case_study_name}_{key}"):
-                        opex_to_delete.append(key)
-                if new_name != key:
-                    case_study["opex"][new_name] = case_study["opex"].pop(key)
-                case_study["opex"][new_name] = new_cost
+                if key != "Energy":  # Escludi il costo dell'energia dai campi modificabili
+                    col1, col2, col3 = st.columns([3, 2, 1])
+                    with col1:
+                        new_name = st.text_input(f"OpEx Name ({key}):", value=key,
+                                                 key=f"opex_name_{case_study_name}_{key}")
+                    with col2:
+                        new_cost = st.number_input(f"OpEx Cost ({key}):", value=value, min_value=0.0,
+                                                   key=f"opex_cost_{case_study_name}_{key}")
+                    with col3:
+                        if st.button(f"Remove OpEx ({key})", key=f"remove_opex_{case_study_name}_{key}"):
+                            opex_to_delete.append(key)
+                    if new_name != key:
+                        case_study["opex"][new_name] = case_study["opex"].pop(key)
+                    case_study["opex"][new_name] = new_cost
 
             for item in opex_to_delete:
                 del case_study["opex"][item]
@@ -786,6 +788,7 @@ def literature():
 
             # Add energy cost to OpEx
             case_study["opex"]["Energy"] = energy_cost
+            save_case_studies()  # Salva il costo dell'energia aggiornato
 
             st.markdown(f"**Total Energy Cost (EUR):** {energy_cost:.2f}")
 
