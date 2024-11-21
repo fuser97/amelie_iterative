@@ -507,7 +507,15 @@ def literature():
 
     # Add, remove, or edit case studies
     case_study_names = list(st.session_state.case_studies.keys())
-    selected_case_study = st.selectbox("Select or Add a Case Study:", case_study_names + ["Add New Case Study"], key="selected_case_study")
+    col1, col2 = st.columns([4, 1])
+    with col1:
+        selected_case_study = st.selectbox("Select or Add a Case Study:", case_study_names + ["Add New Case Study"],
+                                           key="selected_case_study")
+    with col2:
+        if selected_case_study != "Add New Case Study" and st.button("Remove Case Study", key="remove_case_study"):
+            del st.session_state.case_studies[selected_case_study]
+            st.success(f"Case Study '{selected_case_study}' removed.")
+            return  # Stop execution to refresh the page after removal
 
     if selected_case_study == "Add New Case Study":
         new_case_study_name = st.text_input("New Case Study Name:")
