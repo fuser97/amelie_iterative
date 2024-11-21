@@ -9,13 +9,7 @@ import io
 import json
 import os
 
-# Path to the JSON file
-case_studies_file = "case_studies.json"
 
-# Function to save case studies to the JSON file
-def save_case_studies():
-    with open(case_studies_file, "w") as file:
-        json.dump(st.session_state.case_studies, file, indent=4)
 
 
 
@@ -521,6 +515,26 @@ def technical_kpis():
 
         sl_df = pd.DataFrame(sl_results)
         st.table(sl_df)
+
+# Create a directory for storing data
+data_dir = "data"
+if not os.path.exists(data_dir):
+    os.makedirs(data_dir)
+    if not os.access(data_dir, os.W_OK):
+        st.error(f"The directory {data_dir} is not writable. Please check the permissions.")
+
+case_studies_file = os.path.join(data_dir, "case_studies.json")
+
+
+# Function to save case studies to the JSON file
+def save_case_studies():
+    try:
+        with open(case_studies_file, "w") as file:
+            json.dump(st.session_state.case_studies, file, indent=4)
+        st.info(f"Case studies saved to {case_studies_file}")
+    except Exception as e:
+        st.error(f"Failed to save case studies: {e}")
+
 
 def literature():
     st.title("Literature: Case Studies")
