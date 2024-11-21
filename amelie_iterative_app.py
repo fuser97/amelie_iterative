@@ -21,19 +21,37 @@ case_studies_file = os.path.join(data_dir, "case_studies.json")
 if "case_studies" not in st.session_state:
     if os.path.exists(case_studies_file):
         with open(case_studies_file, "r") as file:
-            st.session_state.case_studies = json.load(file)
-        # Assicura che ogni case study abbia tutte le chiavi necessarie
-        for case_study_name, case_study in st.session_state.case_studies.items():
-            if "energy_cost" not in case_study:
-                case_study["energy_cost"] = 0.12  # Default value
-            if "assumptions" not in case_study:
-                case_study["assumptions"] = []
-            if "capex" not in case_study:
-                case_study["capex"] = {}
-            if "opex" not in case_study:
-                case_study["opex"] = {}
+            try:
+                loaded_data = json.load(file)
+                # Verifica che ogni case study sia un dizionario
+                if isinstance(loaded_data, dict):
+                    for case_study_name, case_study in loaded_data.items():
+                        if not isinstance(case_study, dict):
+                            # Se il valore non è un dizionario, lo sostituisci con una struttura valida
+                            loaded_data[case_study_name] = {
+                                "assumptions": [],
+                                "capex": {},
+                                "opex": {},
+                                "energy_cost": 0.12,
+                                "energy_consumption": {}
+                            }
+                        else:
+                            # Assicura che ogni chiave esista
+                            case_study.setdefault("assumptions", [])
+                            case_study.setdefault("capex", {})
+                            case_study.setdefault("opex", {})
+                            case_study.setdefault("energy_cost", 0.12)
+                            case_study.setdefault("energy_consumption", {})
+                    st.session_state.case_studies = loaded_data
+                else:
+                    # Se il file non è strutturato come un dizionario, lo inizializzi
+                    st.session_state.case_studies = {}
+            except json.JSONDecodeError:
+                st.warning("Case studies file is invalid. Starting with an empty state.")
+                st.session_state.case_studies = {}
     else:
         st.session_state.case_studies = {}
+
 
 
 # Configure the page layout
