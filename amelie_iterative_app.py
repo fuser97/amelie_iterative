@@ -306,8 +306,13 @@ def economic_kpis():
                 new_name = st.text_input(f"Edit CapEx Name ({key}):", value=key,
                                          key=f"capex_name_{selected_scenario}_{key}")
             with col2:
-                new_cost = st.number_input(f"CapEx Cost ({key}):", value=value, min_value=0.0,
-                                           key=f"capex_cost_{selected_scenario}_{key}")
+                new_cost = st.number_input(
+                    f"CapEx Cost ({key}):",
+                    value=float(value),  # Forza a float
+                    min_value=0.0,  # Float coerente
+                    key=f"capex_cost_{selected_scenario}_{key}"
+                )
+
             with col3:
                 if st.button(f"Remove CapEx ({key})", key=f"remove_capex_{selected_scenario}_{key}"):
                     capex_to_delete.append(key)
@@ -830,7 +835,7 @@ def literature():
                         new_name = st.text_input(f"OpEx Name ({key}):", value=key,
                                                  key=f"opex_name_{case_study_name}_{key}")
                     with col2:
-                        new_cost = st.number_input(f"OpEx Cost ({key}):", value=value, min_value=0.0,
+                        new_cost = st.number_input(f"OpEx Cost ({key}):", value=float(value), min_value=0.0,
                                                    key=f"opex_cost_{case_study_name}_{key}")
                     with col3:
                         if st.button(f"Remove OpEx ({key})", key=f"remove_opex_{case_study_name}_{key}"):
