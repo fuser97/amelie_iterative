@@ -524,8 +524,11 @@ def literature():
                 st.session_state.case_studies[new_case_study_name] = {
                     "assumptions": [],
                     "capex": {},
-                    "opex": {}
+                    "opex": {},
+                    "energy_cost": 0.0,  # Generic energy cost (EUR per kWh)
+                    "energy_consumption": {}  # Energy consumption per machine
                 }
+
                 st.success(f"Case Study '{new_case_study_name}' created.")
             else:
                 st.error("Invalid or duplicate case study name!")
@@ -647,6 +650,77 @@ def literature():
                 st.image(opex_chart, caption="OpEx Breakdown", use_container_width=True)
                 opex_table = model.generate_table(case_study["opex"])
                 st.table(opex_table)
+
+            # Energy Cost Section
+            st.markdown("#### Energy Cost")
+            case_study["energy_cost"] = st.number_input(
+                f"Energy Cost (EUR per kWh) for {case_study_name}:",
+                value=case_study.get("energy_cost", 0.0),
+                min_value=0.0,
+                key=f"energy_cost_{case_study_name}"
+            )
+
+            # Energy Consumption Section
+            st.markdown("#### Energy Consumption per Machine")
+            energy_to_delete = []
+            for machine, consumption in case_study["energy_consumption"].items():
+                col1, col2, col3 = st.columns([3, 2, 1])
+                with col1:
+                    new_machine = st.text_input(
+                        f"Machine Name ({machine}):",
+                        value=machine,
+                        key=f"machine_name_{case_study_name}_{machine}"
+                    )
+                with col2:
+                    new_consumption = st.number_input(
+                        f"Consumption (kWh) for {machine}:",
+                        value=consumption,
+                        min_value=0.0,
+                        key=f"machine_consumption_{case_study_name}_{machine}"
+                    )
+                with col3:
+                    if st.button(f"Remove {machine}", key=f"remove_machine_{case_study_name}_{machine}"):
+                        energy_to_delete.append(machine)
+
+                # Update the dictionary
+                if new_machine != machine:
+                    case_study["energy_consumption"][new_machine] = case_study["energy_consumption"].pop(machine)
+                case_study["energy_consumption"][new_machine] = new_consumption
+
+            for machine in energy_to_delete:
+                del case_study["energy_consumption"][machine]
+
+            # Add a new machine
+            new_machine_name = st.text_input(f"New Machine Name for {case_study_name}:",
+                                             key=f"new_machine_name_{case_study_name}")
+            new_machine_consumption = st.number_input(f"New Machine Consumption (kWh) for {case_study_name}:",
+                                                      min_value=0.0, key=f"new_machine_consumption_{case_study_name}")
+            if st.button(f"Add Machine for {case_study_name}", key=f"add_machine_{case_study_name}"):
+                if new_machine_name and new_machine_name not in case_study["energy_consumption"]:
+                    case_study["energy_consumption"][new_machine_name] = new_machine_consumption
+                    st.success(f"Added new machine: {new_machine_name}")
+                else:
+                    st.error("Machine name is invalid or already exists!")
+
+            # Direct Input for CapEx and OpEx
+            st.markdown("#### Direct Input for Total CapEx and OpEx")
+            direct_capex = st.number_input(
+                f"Total CapEx (EUR) for {case_study_name}:",
+                value=sum(case_study["capex"].values()),
+                min_value=0.0,
+                key=f"direct_capex_{case_study_name}"
+            )
+            direct_opex = st.number_input(
+                f"Total OpEx (EUR) for {case_study_name}:",
+                value=sum(case_study["opex"].values()),
+                min_value=0.0,
+                key=f"direct_opex_{case_study_name}"
+            )
+
+            if st.button(f"Update Total CapEx and OpEx for {case_study_name}", key=f"update_totals_{case_study_name}"):
+                case_study["capex"] = {"Total CapEx": direct_capex}
+                case_study["opex"] = {"Total OpEx": direct_opex}
+                st.success("Total CapEx and OpEx updated!")
 
 
 # Render the selected page
