@@ -53,6 +53,35 @@ if "case_studies" not in st.session_state:
     else:
         st.session_state.case_studies = {}
 
+amelie_scenarios_file = os.path.join(data_dir, "amelie_scenarios.json")
+
+# Load Amelie scenarios into session state on app start
+if "amelie_scenarios" not in st.session_state:
+    if os.path.exists(amelie_scenarios_file):
+        with open(amelie_scenarios_file, "r") as file:
+            try:
+                st.session_state.amelie_scenarios = json.load(file)
+            except json.JSONDecodeError:
+                st.warning("Amelie scenarios file is invalid. Starting with default scenario.")
+                st.session_state.amelie_scenarios = {
+                    "default": {
+                        "capex": model.capex.copy(),  # Usa i valori di default attuali
+                        "opex": model.opex.copy(),
+                        "energy_cost": 0.12,
+                        "energy_consumption": model.energy_consumption.copy()
+                    }
+                }
+    else:
+        # Se il file non esiste, inizializza con lo scenario di default
+        st.session_state.amelie_scenarios = {
+            "default": {
+                "capex": model.capex.copy(),
+                "opex": model.opex.copy(),
+                "energy_cost": 0.12,
+                "energy_consumption": model.energy_consumption.copy()
+            }
+        }
+
 
 def save_amelie_config():
     try:
@@ -69,6 +98,21 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
+st.sidebar.title("Amelie Scenarios")
+scenario_names = list(st.session_state.amelie_scenarios.keys())
+
+selected_scenario = st.sidebar.selectbox("Select Amelie Scenario:", scenario_names + ["Create New Scenario"])
+
+if selected_scenario == "Create New Scenario":
+    new_scenario_name = st.sidebar.text_input("New Scenario Name:")
+    if st.sidebar.button("Create Scenario"):
+        if new_scenario_name and new_scenario_name not in st.session_state.amelie_scenarios:
+            # Duplica lo scenario corrente
+            st.session_state.amelie_scenarios[new_scenario_name] = st.session_state.amelie_scenarios["default"].copy()
+            st.success(f"Scenario '{new_scenario_name}' created.")
+            selected_scenario = new_scenario_name  # Seleziona automaticamente il nuovo scenario
+        else:
+            st.error("Invalid or duplicate scenario name!")
 
 # Sidebar navigation
 st.sidebar.title("Navigation")
@@ -199,6 +243,15 @@ def economic_kpis():
     if "energy_cost" not in st.session_state:
         st.session_state.energy_cost = 0.12  # Default value if not set
 
+    # Carica i dati dello scenario selezionato
+    current_scenario = st.session_state.amelie_scenarios[selected_scenario]
+
+    # Aggiorna i dati del modello con lo scenario corrente
+    model.capex = current_scenario["capex"]
+    model.opex = current_scenario["opex"]
+    model.energy_cost = current_scenario["energy_cost"]
+    model.energy_consumption = current_scenario["energy_consumption"]
+
     # Add a section dropdown
     sections = ["General Assumptions", "CapEx Configuration", "OpEx Configuration", "Results"]
     selected_section = st.selectbox("Jump to Section:", sections)
@@ -242,22 +295,27 @@ def economic_kpis():
     # CapEx Configuration Section
     elif selected_section == "CapEx Configuration":
         st.subheader("CapEx Configuration")
+        # Update CapEx
         capex_to_delete = []
-        for key, value in st.session_state.capex_data.items():
+        for key, value in current_scenario["capex"].items():
             col1, col2, col3 = st.columns([3, 2, 1])
             with col1:
-                new_name = st.text_input(f"Edit Name: {key}", value=key, key=f"capex_name_{key}")
+                new_name = st.text_input(f"Edit CapEx Name ({key}):", value=key,
+                                         key=f"capex_name_{selected_scenario}_{key}")
             with col2:
-                new_cost = st.number_input(f"Edit Cost (EUR):", value=float(value), min_value=0.0,
-                                           key=f"capex_cost_{key}")
+                new_cost = st.number_input(f"CapEx Cost ({key}):", value=value, min_value=0.0,
+                                           key=f"capex_cost_{selected_scenario}_{key}")
             with col3:
-                if st.button("Remove", key=f"remove_capex_{key}"):
+                if st.button(f"Remove CapEx ({key})", key=f"remove_capex_{selected_scenario}_{key}"):
                     capex_to_delete.append(key)
-            if new_name != key:
-                st.session_state.capex_data[new_name] = st.session_state.capex_data.pop(key)
-            st.session_state.capex_data[new_name] = new_cost
+            current_scenario["capex"][new_name] = new_cost
+
+        # Rimuovi i CapEx eliminati
         for item in capex_to_delete:
-            del st.session_state.capex_data[item]
+            del current_scenario["capex"][item]
+
+        # Salva lo scenario
+        save_amelie_scenarios()
 
         new_name = st.text_input("New CapEx Name:", key="new_capex_name")
         new_cost = st.number_input("New CapEx Cost (EUR):", min_value=0.0, key="new_capex_cost")
@@ -372,6 +430,20 @@ def economic_kpis():
         # Remove deleted OpEx items
         for item in opex_to_delete:
             del opex_data_temp[item]
+
+        # Salva lo scenario
+        save_amelie_scenarios()
+
+        # Update Energy Cost
+        current_scenario["energy_cost"] = st.number_input(
+            "Energy Cost (EUR/kWh):",
+            value=current_scenario.get("energy_cost", 0.12),
+            min_value=0.0,
+            key=f"energy_cost_{selected_scenario}"
+        )
+
+        # Salva lo scenario
+        save_amelie_scenarios()
 
         # Add new OpEx item
         st.markdown("**Add New OpEx Item**")
@@ -615,6 +687,14 @@ def save_case_studies():
     except Exception as e:
         st.error(f"Failed to save case studies: {e}")
 
+
+def save_amelie_scenarios():
+    try:
+        with open(amelie_scenarios_file, "w") as file:
+            json.dump(st.session_state.amelie_scenarios, file, indent=4)
+        st.success("Amelie scenarios saved successfully.")
+    except Exception as e:
+        st.error(f"Failed to save Amelie scenarios: {e}")
 
 
 def literature():
@@ -905,3 +985,18 @@ elif page == "Technical KPIs":
     technical_kpis()
 elif page == "Literature":
     literature()
+
+
+st.sidebar.title("Compare Scenarios")
+compare_scenarios = st.sidebar.multiselect("Select Scenarios to Compare:", scenario_names, default=["default"])
+
+if len(compare_scenarios) > 1:
+    st.subheader("Comparison of Selected Scenarios")
+    comparison_data = {
+        "Scenario": compare_scenarios,
+        "Energy Cost": [st.session_state.amelie_scenarios[sc]["energy_cost"] for sc in compare_scenarios],
+        "Total CapEx": [sum(st.session_state.amelie_scenarios[sc]["capex"].values()) for sc in compare_scenarios],
+        "Total OpEx": [sum(st.session_state.amelie_scenarios[sc]["opex"].values()) for sc in compare_scenarios]
+    }
+    comparison_df = pd.DataFrame(comparison_data)
+    st.table(comparison_df)
