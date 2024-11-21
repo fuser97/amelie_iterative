@@ -638,18 +638,28 @@ def literature():
             # Generate Pie Charts and Tables
             st.markdown("#### Visualization")
             if case_study["capex"]:
-                st.markdown("**CapEx Breakdown**")
-                capex_chart = model.generate_pie_chart(case_study["capex"], f"CapEx Breakdown for {case_study_name}")
-                st.image(capex_chart, caption="CapEx Breakdown", use_container_width=True)
-                capex_table = model.generate_table(case_study["capex"])
-                st.table(capex_table)
+                capex_data = case_study["capex"]
+            else:
+                # Handle empty CapEx: Add a placeholder
+                capex_data = {"Direct Entry": case_study.get("capex_total", 0.0)}
+
+            st.markdown("#### CapEx Breakdown")
+            capex_chart = model.generate_pie_chart(capex_data, f"CapEx Breakdown for {case_study_name}")
+            st.image(capex_chart, caption="CapEx Breakdown", use_container_width=True)
+            capex_table = model.generate_table(capex_data)
+            st.table(capex_table)
 
             if case_study["opex"]:
-                st.markdown("**OpEx Breakdown**")
-                opex_chart = model.generate_pie_chart(case_study["opex"], f"OpEx Breakdown for {case_study_name}")
-                st.image(opex_chart, caption="OpEx Breakdown", use_container_width=True)
-                opex_table = model.generate_table(case_study["opex"])
-                st.table(opex_table)
+                opex_data = case_study["opex"]
+            else:
+                # Handle empty OpEx: Add a placeholder
+                opex_data = {"Direct Entry": case_study.get("opex_total", 0.0)}
+
+            st.markdown("#### OpEx Breakdown")
+            opex_chart = model.generate_pie_chart(opex_data, f"OpEx Breakdown for {case_study_name}")
+            st.image(opex_chart, caption="OpEx Breakdown", use_container_width=True)
+            opex_table = model.generate_table(opex_data)
+            st.table(opex_table)
 
             # Energy Cost Section
             st.markdown("#### Energy Cost")
