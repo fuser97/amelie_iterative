@@ -109,11 +109,17 @@ def economic_kpis():
         st.session_state.capex_data = model.capex.copy()
     if "opex_data" not in st.session_state:
         st.session_state.opex_data = model.opex.copy()
-    if "benchmark_case_studies" not in st.session_state:
-        st.session_state.benchmark_case_studies = {}  # Dictionary to store case study data
+    if "amelie_assumptions" not in st.session_state:
+        st.session_state.amelie_assumptions = [
+            "Batch Size (10 kg)",
+            "1 Operator per Batch",
+            "Process Includes: Pre-treatment, leaching, drying, and wastewater treatment"
+        ]
+    if "case_studies" not in st.session_state:
+        st.session_state.case_studies = {}
 
     # Add a section dropdown
-    sections = ["Amelie Configuration", "Benchmark Case Studies", "Results"]
+    sections = ["Amelie Configuration", "Case Studies", "Benchmark", "Results"]
     selected_section = st.selectbox("Jump to Section:", sections)
 
     # Amelie Configuration
@@ -176,13 +182,6 @@ def economic_kpis():
 
         # Assumptions
         st.markdown("### Assumptions")
-        if "amelie_assumptions" not in st.session_state:
-            st.session_state.amelie_assumptions = [
-                "Batch Size (10 kg)",
-                "1 Operator per Batch",
-                "Process Includes: Pre-treatment, leaching, drying, and wastewater treatment"
-            ]
-
         assumptions_to_delete = []
         for idx, assumption in enumerate(st.session_state.amelie_assumptions):
             col1, col2 = st.columns([4, 1])
@@ -203,27 +202,27 @@ def economic_kpis():
             else:
                 st.error("Assumption cannot be empty!")
 
-    # Benchmark Case Studies
-    elif selected_section == "Benchmark Case Studies":
-        st.subheader("Benchmark Case Studies")
+    # Case Studies
+    elif selected_section == "Case Studies":
+        st.subheader("Case Studies")
 
         # Add new case study
         st.markdown("### Add New Case Study")
         case_study_name = st.text_input("Case Study Name:")
-        if case_study_name and case_study_name not in st.session_state.benchmark_case_studies:
+        if case_study_name and case_study_name not in st.session_state.case_studies:
             if st.button("Add Case Study"):
-                st.session_state.benchmark_case_studies[case_study_name] = {
+                st.session_state.case_studies[case_study_name] = {
                     "CapEx": {},
                     "OpEx": {},
                     "Assumptions": []
                 }
                 st.success(f"Added case study: {case_study_name}")
 
-        # Display existing case studies
-        st.markdown("### Existing Case Studies")
-        for case_study_name, data in st.session_state.benchmark_case_studies.items():
+        # Manage existing case studies
+        for case_study_name, data in st.session_state.case_studies.items():
             with st.expander(f"Case Study: {case_study_name}", expanded=False):
-                st.markdown("#### CapEx")
+                # CapEx
+                st.markdown("#### CapEx Configuration")
                 for category, value in st.session_state.capex_data.items():
                     data["CapEx"][category] = st.number_input(
                         f"CapEx ({category}) for {case_study_name}:",
@@ -232,7 +231,8 @@ def economic_kpis():
                         key=f"{case_study_name}_capex_{category}"
                     )
 
-                st.markdown("#### OpEx")
+                # OpEx
+                st.markdown("#### OpEx Configuration")
                 for category, value in st.session_state.opex_data.items():
                     data["OpEx"][category] = st.number_input(
                         f"OpEx ({category}) for {case_study_name}:",
@@ -241,80 +241,46 @@ def economic_kpis():
                         key=f"{case_study_name}_opex_{category}"
                     )
 
+                # Assumptions
                 st.markdown("#### Assumptions")
-                assumptions_to_delete = []
                 for idx, assumption in enumerate(data["Assumptions"]):
-                    col1, col2 = st.columns([4, 1])
-                    with col1:
-                        data["Assumptions"][idx] = st.text_input(
-                            f"Edit Assumption {idx + 1}:",
-                            value=assumption,
-                            key=f"{case_study_name}_assumption_{idx}"
-                        )
-                    with col2:
-                        if st.button(f"Remove Assumption {idx + 1}", key=f"{case_study_name}_remove_assumption_{idx}"):
-                            assumptions_to_delete.append(idx)
-
-                for idx in sorted(assumptions_to_delete, reverse=True):
-                    data["Assumptions"].pop(idx)
+                    data["Assumptions"][idx] = st.text_input(
+                        f"Assumption {idx + 1} for {case_study_name}:",
+                        value=assumption,
+                        key=f"{case_study_name}_assumption_{idx}"
+                    )
 
                 new_assumption = st.text_input(f"New Assumption for {case_study_name}:", key=f"{case_study_name}_new_assumption")
                 if st.button(f"Add Assumption for {case_study_name}"):
                     if new_assumption:
                         data["Assumptions"].append(new_assumption)
-                        st.success(f"Added new assumption for {case_study_name}: {new_assumption}")
-                    else:
-                        st.error("Assumption cannot be empty!")
+                        st.success(f"Added assumption for {case_study_name}: {new_assumption}")
 
-                if st.button(f"Remove {case_study_name}", key=f"remove_{case_study_name}"):
-                    del st.session_state.benchmark_case_studies[case_study_name]
-                    st.success(f"Removed case study: {case_study_name}")
-                    st.experimental_rerun()
+    # Benchmark
+    elif selected_section == "Benchmark":
+        st.subheader("Benchmark Comparison")
 
-# Continuare con la sezione "Results" come spiegato prima.
-
-
-    # Results
-    elif selected_section == "Results":
-        st.subheader("Results")
-        capex_total, opex_total = model.calculate_totals()
-
-        st.write(f"**Amelie Total CapEx:** {capex_total} EUR")
-        st.write(f"**Amelie Total OpEx (including energy):** {opex_total} EUR")
-
-        # Comparison
-        st.markdown("### Comparison with Case Studies")
-        comparison_results = []
-
-        for case_study_name, data in st.session_state.benchmark_case_studies.items():
-            for category, value in st.session_state.capex_data.items():
-                benchmark_value = data["CapEx"].get(category, 0.0)
-                difference = value - benchmark_value
-                percentage_difference = (difference / benchmark_value * 100) if benchmark_value > 0 else "N/A"
-                comparison_results.append({
-                    "Case Study": case_study_name,
+        # Display Amelie and case studies
+        st.markdown("### Amelie vs Case Studies")
+        benchmark_results = []
+        for case_study_name, data in st.session_state.case_studies.items():
+            for category in st.session_state.capex_data.keys():
+                benchmark_results.append({
                     "Category": f"CapEx - {category}",
-                    "Amelie Value (EUR)": value,
-                    "Benchmark Value (EUR)": benchmark_value,
-                    "Difference (EUR)": difference,
-                    "Difference (%)": percentage_difference
-                })
-
-            for category, value in st.session_state.opex_data.items():
-                benchmark_value = data["OpEx"].get(category, 0.0)
-                difference = value - benchmark_value
-                percentage_difference = (difference / benchmark_value * 100) if benchmark_value > 0 else "N/A"
-                comparison_results.append({
+                    "Amelie Value": st.session_state.capex_data[category],
                     "Case Study": case_study_name,
-                    "Category": f"OpEx - {category}",
-                    "Amelie Value (EUR)": value,
-                    "Benchmark Value (EUR)": benchmark_value,
-                    "Difference (EUR)": difference,
-                    "Difference (%)": percentage_difference
+                    "Case Study Value": data["CapEx"].get(category, 0.0)
                 })
+            for category in st.session_state.opex_data.keys():
+                benchmark_results.append({
+                    "Category": f"OpEx - {category}",
+                    "Amelie Value": st.session_state.opex_data[category],
+                    "Case Study": case_study_name,
+                    "Case Study Value": data["OpEx"].get(category, 0.0)
+                })
+        benchmark_df = pd.DataFrame(benchmark_results)
+        st.table(benchmark_df)
 
-        comparison_df = pd.DataFrame(comparison_results)
-        st.table(comparison_df)
 
 
 
