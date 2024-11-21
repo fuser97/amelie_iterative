@@ -723,11 +723,7 @@ def literature():
             if not any(opex_data.values()):
                 opex_data = {"Fallback": 1.0}
 
-            opex_chart = model.generate_pie_chart(opex_data, f"OpEx Breakdown for {case_study_name}")
-            st.image(opex_chart, caption="OpEx Breakdown", use_container_width=True)
 
-            opex_table = model.generate_table(opex_data)
-            st.table(opex_table)
 
             # Energy Cost Section
             st.markdown("#### Energy Cost")
@@ -812,6 +808,11 @@ def literature():
                 case_study["opex"]["Direct OpEx"] = float(direct_opex)  # Keep other OpEx like energy
                 st.success("Total CapEx and OpEx updated!")
 
+            opex_chart = model.generate_pie_chart(opex_data, f"OpEx Breakdown for {case_study_name}")
+            st.image(opex_chart, caption="OpEx Breakdown", use_container_width=True)
+
+            opex_table = model.generate_table(opex_data)
+            st.table(opex_table)
 
 
 # Render the selected page
