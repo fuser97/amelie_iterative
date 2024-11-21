@@ -22,6 +22,8 @@ if "case_studies" not in st.session_state:
     if os.path.exists(case_studies_file):
         with open(case_studies_file, "r") as file:
             st.session_state.case_studies = json.load(file)
+            st.session_state.amelie_energy_cost = st.session_state.case_studies.get("energy_cost", 0.12)
+
     else:
         st.session_state.case_studies = {}
 
@@ -71,7 +73,8 @@ class AmelieEconomicModel:
             'Solvent Extraction Unit': 6,
             'Microwave Thermal Treatment': 2.5
         }
-        self.energy_cost = 0.12  # EUR per kWh
+        self.energy_cost = st.session_state.get("amelie_energy_cost", 0.12)  # Default 0.12 EUR per kWh
+  # EUR per kWh
         self.black_mass = 10
 
     def calculate_totals(self):
@@ -229,11 +232,12 @@ def economic_kpis():
         # Update energy cost
         energy_cost = st.number_input(
             "Cost per kWh (EUR):",
-            value=st.session_state.get("energy_cost", 0.12),
+            value=st.session_state.get("amelie_energy_cost", 0.12),
             min_value=0.0,
-            key="energy_cost_input"  # Unique key for the energy cost input
+            key="amelie_energy_cost_input"
         )
-        st.session_state.energy_cost = energy_cost  # Update session state
+        st.session_state.amelie_energy_cost = energy_cost  # Save to session state
+        model.energy_cost = energy_cost  # Update the model
 
         # Add, edit, and delete energy equipment
         energy_to_delete = []
@@ -534,6 +538,9 @@ def technical_kpis():
 # Function to save case studies to the JSON file
 def save_case_studies():
     try:
+        # Salva anche il costo dell'energia nel file JSON
+        st.session_state.case_studies["energy_cost"] = st.session_state.get("amelie_energy_cost", 0.12)
+
         with open(case_studies_file, "w") as file:
             json.dump(st.session_state.case_studies, file, indent=4)
         st.info(f"Case studies saved to {case_studies_file}")
