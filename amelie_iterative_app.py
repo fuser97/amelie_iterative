@@ -10,8 +10,20 @@ import json
 import os
 
 
+# Path to the JSON file
+data_dir = "data"
+if not os.path.exists(data_dir):
+    os.makedirs(data_dir)
 
+case_studies_file = os.path.join(data_dir, "case_studies.json")
 
+# Load case studies into session state on app start
+if "case_studies" not in st.session_state:
+    if os.path.exists(case_studies_file):
+        with open(case_studies_file, "r") as file:
+            st.session_state.case_studies = json.load(file)
+    else:
+        st.session_state.case_studies = {}
 
 # Configure the page layout
 st.set_page_config(
@@ -516,14 +528,7 @@ def technical_kpis():
         sl_df = pd.DataFrame(sl_results)
         st.table(sl_df)
 
-# Create a directory for storing data
-data_dir = "data"
-if not os.path.exists(data_dir):
-    os.makedirs(data_dir)
-    if not os.access(data_dir, os.W_OK):
-        st.error(f"The directory {data_dir} is not writable. Please check the permissions.")
 
-case_studies_file = os.path.join(data_dir, "case_studies.json")
 
 
 # Function to save case studies to the JSON file
@@ -543,13 +548,7 @@ def literature():
     # Path to the JSON file
     case_studies_file = "case_studies.json"
 
-    # Load case studies from the file if not already loaded
-    if "case_studies" not in st.session_state:
-        if os.path.exists(case_studies_file):
-            with open(case_studies_file, "r") as file:
-                st.session_state.case_studies = json.load(file)
-        else:
-            st.session_state.case_studies = {}
+   
 
     case_study_names = list(st.session_state.case_studies.keys())
 
