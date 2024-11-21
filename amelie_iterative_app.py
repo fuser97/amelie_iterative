@@ -706,9 +706,7 @@ def literature():
             capex_chart = model.generate_pie_chart(capex_data, f"CapEx Breakdown for {case_study_name}")
             st.image(capex_chart, caption="CapEx Breakdown", use_container_width=True)
 
-            capex_table = model.generate_table(capex_data)
-            st.table(capex_table)
-
+        
             if case_study["opex"]:
                 opex_data = {k: v for k, v in case_study["opex"].items() if v > 0}
             else:
@@ -723,7 +721,7 @@ def literature():
             if not any(opex_data.values()):
                 opex_data = {"Fallback": 1.0}
 
-
+            
 
             # Energy Cost Section
             st.markdown("#### Energy Cost")
@@ -811,6 +809,9 @@ def literature():
             opex_chart = model.generate_pie_chart(opex_data, f"OpEx Breakdown for {case_study_name}")
             st.image(opex_chart, caption="OpEx Breakdown", use_container_width=True)
 
+            capex_table = model.generate_table(capex_data)
+            st.table(capex_table)
+            
             opex_table = model.generate_table(opex_data)
             st.table(opex_table)
 
