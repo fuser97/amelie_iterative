@@ -531,104 +531,122 @@ def literature():
                 st.error("Invalid or duplicate case study name!")
         return
 
-    # Display selected case study details
-    st.subheader(f"Case Study: {selected_case_study}")
+    st.markdown("### Case Studies")
 
-    case_study = st.session_state.case_studies[selected_case_study]
+    for case_study_name in st.session_state.case_studies.keys():
+        with st.expander(f"Case Study: {case_study_name}", expanded=False):
+            case_study = st.session_state.case_studies[case_study_name]
 
-    # Assumptions Section
-    st.markdown("### Assumptions")
-    assumptions_to_delete = []
-    for idx, assumption in enumerate(case_study["assumptions"]):
-        col1, col2 = st.columns([4, 1])
-        with col1:
-            st.text_input(f"Edit Assumption {idx + 1}:", value=assumption, key=f"assumption_{selected_case_study}_{idx}")
-        with col2:
-            if st.button("Remove", key=f"remove_assumption_{selected_case_study}_{idx}"):
-                assumptions_to_delete.append(idx)
+            # Ensure all keys are present
+            if "assumptions" not in case_study:
+                case_study["assumptions"] = []
+            if "capex" not in case_study:
+                case_study["capex"] = {}
+            if "opex" not in case_study:
+                case_study["opex"] = {}
 
-    for idx in sorted(assumptions_to_delete, reverse=True):
-        case_study["assumptions"].pop(idx)
+            # Assumptions Section
+            st.markdown("#### Assumptions")
+            assumptions_to_delete = []
+            for idx, assumption in enumerate(case_study["assumptions"]):
+                col1, col2 = st.columns([4, 1])
+                with col1:
+                    st.text_input(f"Edit Assumption {idx + 1}:", value=assumption,
+                                  key=f"assumption_{case_study_name}_{idx}")
+                with col2:
+                    if st.button("Remove", key=f"remove_assumption_{case_study_name}_{idx}"):
+                        assumptions_to_delete.append(idx)
 
-    new_assumption = st.text_input(f"New Assumption for {selected_case_study}:", key=f"new_assumption_{selected_case_study}")
-    if st.button("Add Assumption", key=f"add_assumption_{selected_case_study}"):
-        if new_assumption:
-            case_study["assumptions"].append(new_assumption)
-            st.success("New assumption added!")
-        else:
-            st.error("Assumption cannot be empty!")
+            for idx in sorted(assumptions_to_delete, reverse=True):
+                case_study["assumptions"].pop(idx)
 
-    # CapEx Section
-    st.markdown("### CapEx")
-    capex_to_delete = []
-    for key, value in case_study["capex"].items():
-        col1, col2, col3 = st.columns([3, 2, 1])
-        with col1:
-            new_name = st.text_input(f"CapEx Name ({key}):", value=key, key=f"capex_name_{selected_case_study}_{key}")
-        with col2:
-            new_cost = st.number_input(f"CapEx Cost ({key}):", value=value, min_value=0.0, key=f"capex_cost_{selected_case_study}_{key}")
-        with col3:
-            if st.button(f"Remove CapEx ({key})", key=f"remove_capex_{selected_case_study}_{key}"):
-                capex_to_delete.append(key)
-        if new_name != key:
-            case_study["capex"][new_name] = case_study["capex"].pop(key)
-        case_study["capex"][new_name] = new_cost
+            new_assumption = st.text_input(f"New Assumption for {case_study_name}:",
+                                           key=f"new_assumption_{case_study_name}")
+            if st.button(f"Add Assumption", key=f"add_assumption_{case_study_name}"):
+                if new_assumption:
+                    case_study["assumptions"].append(new_assumption)
+                    st.success("New assumption added!")
+                else:
+                    st.error("Assumption cannot be empty!")
 
-    for item in capex_to_delete:
-        del case_study["capex"][item]
+            # CapEx Section
+            st.markdown("#### CapEx")
+            capex_to_delete = []
+            for key, value in case_study["capex"].items():
+                col1, col2, col3 = st.columns([3, 2, 1])
+                with col1:
+                    new_name = st.text_input(f"CapEx Name ({key}):", value=key,
+                                             key=f"capex_name_{case_study_name}_{key}")
+                with col2:
+                    new_cost = st.number_input(f"CapEx Cost ({key}):", value=value, min_value=0.0,
+                                               key=f"capex_cost_{case_study_name}_{key}")
+                with col3:
+                    if st.button(f"Remove CapEx ({key})", key=f"remove_capex_{case_study_name}_{key}"):
+                        capex_to_delete.append(key)
+                if new_name != key:
+                    case_study["capex"][new_name] = case_study["capex"].pop(key)
+                case_study["capex"][new_name] = new_cost
 
-    new_capex_name = st.text_input(f"New CapEx Name for {selected_case_study}:", key=f"new_capex_name_{selected_case_study}")
-    new_capex_cost = st.number_input(f"New CapEx Cost for {selected_case_study}:", min_value=0.0, key=f"new_capex_cost_{selected_case_study}")
-    if st.button(f"Add CapEx for {selected_case_study}"):
-        if new_capex_name and new_capex_name not in case_study["capex"]:
-            case_study["capex"][new_capex_name] = new_capex_cost
-            st.success("New CapEx item added!")
-        else:
-            st.error("CapEx item already exists or name is invalid!")
+            for item in capex_to_delete:
+                del case_study["capex"][item]
 
-    # OpEx Section
-    st.markdown("### OpEx")
-    opex_to_delete = []
-    for key, value in case_study["opex"].items():
-        col1, col2, col3 = st.columns([3, 2, 1])
-        with col1:
-            new_name = st.text_input(f"OpEx Name ({key}):", value=key, key=f"opex_name_{selected_case_study}_{key}")
-        with col2:
-            new_cost = st.number_input(f"OpEx Cost ({key}):", value=value, min_value=0.0, key=f"opex_cost_{selected_case_study}_{key}")
-        with col3:
-            if st.button(f"Remove OpEx ({key})", key=f"remove_opex_{selected_case_study}_{key}"):
-                opex_to_delete.append(key)
-        if new_name != key:
-            case_study["opex"][new_name] = case_study["opex"].pop(key)
-        case_study["opex"][new_name] = new_cost
+            new_capex_name = st.text_input(f"New CapEx Name for {case_study_name}:",
+                                           key=f"new_capex_name_{case_study_name}")
+            new_capex_cost = st.number_input(f"New CapEx Cost for {case_study_name}:", min_value=0.0,
+                                             key=f"new_capex_cost_{case_study_name}")
+            if st.button(f"Add CapEx for {case_study_name}"):
+                if new_capex_name and new_capex_name not in case_study["capex"]:
+                    case_study["capex"][new_capex_name] = new_capex_cost
+                    st.success("New CapEx item added!")
+                else:
+                    st.error("CapEx item already exists or name is invalid!")
 
-    for item in opex_to_delete:
-        del case_study["opex"][item]
+            # OpEx Section
+            st.markdown("#### OpEx")
+            opex_to_delete = []
+            for key, value in case_study["opex"].items():
+                col1, col2, col3 = st.columns([3, 2, 1])
+                with col1:
+                    new_name = st.text_input(f"OpEx Name ({key}):", value=key, key=f"opex_name_{case_study_name}_{key}")
+                with col2:
+                    new_cost = st.number_input(f"OpEx Cost ({key}):", value=value, min_value=0.0,
+                                               key=f"opex_cost_{case_study_name}_{key}")
+                with col3:
+                    if st.button(f"Remove OpEx ({key})", key=f"remove_opex_{case_study_name}_{key}"):
+                        opex_to_delete.append(key)
+                if new_name != key:
+                    case_study["opex"][new_name] = case_study["opex"].pop(key)
+                case_study["opex"][new_name] = new_cost
 
-    new_opex_name = st.text_input(f"New OpEx Name for {selected_case_study}:", key=f"new_opex_name_{selected_case_study}")
-    new_opex_cost = st.number_input(f"New OpEx Cost for {selected_case_study}:", min_value=0.0, key=f"new_opex_cost_{selected_case_study}")
-    if st.button(f"Add OpEx for {selected_case_study}"):
-        if new_opex_name and new_opex_name not in case_study["opex"]:
-            case_study["opex"][new_opex_name] = new_opex_cost
-            st.success("New OpEx item added!")
-        else:
-            st.error("OpEx item already exists or name is invalid!")
+            for item in opex_to_delete:
+                del case_study["opex"][item]
 
-    # Generate Pie Charts and Tables
-    st.markdown("### Visualization")
-    if case_study["capex"]:
-        st.markdown("#### CapEx Breakdown")
-        capex_chart = model.generate_pie_chart(case_study["capex"], f"CapEx Breakdown for {selected_case_study}")
-        st.image(capex_chart, caption="CapEx Breakdown", use_container_width=True)
-        capex_table = model.generate_table(case_study["capex"])
-        st.table(capex_table)
+            new_opex_name = st.text_input(f"New OpEx Name for {case_study_name}:",
+                                          key=f"new_opex_name_{case_study_name}")
+            new_opex_cost = st.number_input(f"New OpEx Cost for {case_study_name}:", min_value=0.0,
+                                            key=f"new_opex_cost_{case_study_name}")
+            if st.button(f"Add OpEx for {case_study_name}"):
+                if new_opex_name and new_opex_name not in case_study["opex"]:
+                    case_study["opex"][new_opex_name] = new_opex_cost
+                    st.success("New OpEx item added!")
+                else:
+                    st.error("OpEx item already exists or name is invalid!")
 
-    if case_study["opex"]:
-        st.markdown("#### OpEx Breakdown")
-        opex_chart = model.generate_pie_chart(case_study["opex"], f"OpEx Breakdown for {selected_case_study}")
-        st.image(opex_chart, caption="OpEx Breakdown", use_container_width=True)
-        opex_table = model.generate_table(case_study["opex"])
-        st.table(opex_table)
+            # Generate Pie Charts and Tables
+            st.markdown("#### Visualization")
+            if case_study["capex"]:
+                st.markdown("**CapEx Breakdown**")
+                capex_chart = model.generate_pie_chart(case_study["capex"], f"CapEx Breakdown for {case_study_name}")
+                st.image(capex_chart, caption="CapEx Breakdown", use_container_width=True)
+                capex_table = model.generate_table(case_study["capex"])
+                st.table(capex_table)
+
+            if case_study["opex"]:
+                st.markdown("**OpEx Breakdown**")
+                opex_chart = model.generate_pie_chart(case_study["opex"], f"OpEx Breakdown for {case_study_name}")
+                st.image(opex_chart, caption="OpEx Breakdown", use_container_width=True)
+                opex_table = model.generate_table(case_study["opex"])
+                st.table(opex_table)
 
 
 # Render the selected page
