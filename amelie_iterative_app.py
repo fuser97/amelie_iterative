@@ -834,10 +834,8 @@ def technical_kpis():
 
 
 
-# Function to save case studies to the JSON file
 def save_case_studies():
     try:
-        # Assicura che ogni case study abbia la struttura corretta
         for case_study_name, case_study in st.session_state.case_studies.items():
             if not isinstance(case_study, dict):
                 st.session_state.case_studies[case_study_name] = {
@@ -845,7 +843,8 @@ def save_case_studies():
                     "capex": {},
                     "opex": {},
                     "energy_cost": 0.12,
-                    "energy_consumption": {}
+                    "energy_consumption": {},
+                    "technical_kpis": {}  # Aggiunta dei KPI tecnici
                 }
             else:
                 case_study.setdefault("assumptions", [])
@@ -853,13 +852,14 @@ def save_case_studies():
                 case_study.setdefault("opex", {})
                 case_study.setdefault("energy_cost", 0.12)
                 case_study.setdefault("energy_consumption", {})
+                case_study.setdefault("technical_kpis", {})  # Aggiunta dei KPI tecnici
 
-        # Salva su file
         with open(case_studies_file, "w") as file:
             json.dump(st.session_state.case_studies, file, indent=4)
         st.info(f"Case studies saved to {case_studies_file}")
     except Exception as e:
         st.error(f"Failed to save case studies: {e}")
+
 
 
 def save_amelie_scenarios():
@@ -1156,6 +1156,66 @@ def literature():
 
             opex_table = model.generate_table(opex_data)
             st.table(opex_table)
+
+            # Technical KPIs Section
+            st.markdown("#### Technical KPIs")
+            technical_kpis = case_study.setdefault("technical_kpis", {})
+
+            # Aggiungi o modifica valori dei KPI tecnici
+            for kpi_name, kpi_value in list(technical_kpis.items()):
+                col1, col2, col3 = st.columns([3, 2, 1])
+                with col1:
+                    new_kpi_name = st.text_input(f"Edit KPI Name ({kpi_name}):", value=kpi_name,
+                                                 key=f"kpi_name_{case_study_name}_{kpi_name}")
+                with col2:
+                    new_kpi_value = st.number_input(
+                        f"Value for {kpi_name}:",
+                        value=kpi_value,
+                        min_value=0.0,
+                        key=f"kpi_value_{case_study_name}_{kpi_name}"
+                    )
+                with col3:
+                    if st.button(f"Remove KPI ({kpi_name})", key=f"remove_kpi_{case_study_name}_{kpi_name}"):
+                        del technical_kpis[kpi_name]
+
+                # Aggiorna il KPI se modificato
+                if new_kpi_name != kpi_name:
+                    technical_kpis[new_kpi_name] = technical_kpis.pop(kpi_name)
+                technical_kpis[new_kpi_name] = new_kpi_value
+
+            # Aggiungi nuovi KPI tecnici
+            new_kpi_name = st.text_input("New KPI Name:", key=f"new_kpi_name_{case_study_name}")
+            new_kpi_value = st.number_input("New KPI Value:", min_value=0.0, key=f"new_kpi_value_{case_study_name}")
+            if st.button("Add Technical KPI", key=f"add_kpi_{case_study_name}"):
+                if new_kpi_name and new_kpi_name not in technical_kpis:
+                    technical_kpis[new_kpi_name] = new_kpi_value
+                    st.success(f"Added new KPI: {new_kpi_name}")
+                else:
+                    st.error("KPI name is invalid or already exists!")
+
+            # Salva i KPI aggiornati
+            case_study["technical_kpis"] = technical_kpis
+            save_case_studies()
+
+            st.markdown("#### Final Values for KPIs (Optional)")
+            use_final_values = st.checkbox("Use Final Values Only", key=f"use_final_values_{case_study_name}")
+
+            if use_final_values:
+                for kpi_name, kpi_value in technical_kpis.items():
+                    final_value = st.number_input(
+                        f"Final Value for {kpi_name}:",
+                        value=kpi_value,
+                        min_value=0.0,
+                        key=f"final_value_{case_study_name}_{kpi_name}"
+                    )
+                    technical_kpis[kpi_name] = final_value
+                save_case_studies()
+            st.markdown("#### Technical KPI Summary")
+            if technical_kpis:
+                kpi_df = pd.DataFrame(list(technical_kpis.items()), columns=["KPI", "Value"])
+                st.table(kpi_df)
+            else:
+                st.info("No Technical KPIs configured.")
 
 
 # Render the selected page
