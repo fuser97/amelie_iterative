@@ -1161,35 +1161,109 @@ def literature():
             st.markdown("#### Technical KPIs")
             technical_kpis = case_study.setdefault("technical_kpis", {})
 
-            # Aggiungi o modifica valori dei KPI tecnici
-            for kpi_name, kpi_value in list(technical_kpis.items()):
+            # Sezione per aggiungere/calcolare i KPI definiti
+            st.markdown("##### Calculate Defined KPIs")
+            # Input per il calcolo dell'efficienza
+            col1, col2 = st.columns(2)
+            with col1:
+                total_mass = st.number_input(
+                    "Total Black Mass (kg):",
+                    min_value=0.0,
+                    value=technical_kpis.get("total_mass", 0.0),
+                    step=0.1,
+                    key=f"total_mass_{case_study_name}"
+                )
+                technical_kpis["total_mass"] = total_mass
+
+            with col2:
+                recovered_mass = st.number_input(
+                    "Recovered Mass (kg):",
+                    min_value=0.0,
+                    value=technical_kpis.get("recovered_mass", 0.0),
+                    step=0.1,
+                    key=f"recovered_mass_{case_study_name}"
+                )
+                technical_kpis["recovered_mass"] = recovered_mass
+
+            # Calcolo efficienza
+            efficiency = (recovered_mass / total_mass * 100) if total_mass > 0 else 0.0
+            technical_kpis["efficiency"] = efficiency
+            st.write(f"**Efficiency:** {efficiency:.2f}%")
+
+            # Input per Solid/Liquid Ratio
+            st.markdown("##### Input for Solid/Liquid Ratio Calculation")
+            col1, col2 = st.columns(2)
+            with col1:
+                phase_mass = st.number_input(
+                    "Phase Mass (kg):",
+                    min_value=0.0,
+                    value=technical_kpis.get("phase_mass", 0.0),
+                    step=0.1,
+                    key=f"phase_mass_{case_study_name}"
+                )
+                technical_kpis["phase_mass"] = phase_mass
+
+            with col2:
+                liquid_volume = st.number_input(
+                    "Liquid Volume (L):",
+                    min_value=0.0,
+                    value=technical_kpis.get("liquid_volume", 0.0),
+                    step=0.1,
+                    key=f"liquid_volume_{case_study_name}"
+                )
+                technical_kpis["liquid_volume"] = liquid_volume
+
+            # Calcolo Solid/Liquid Ratio
+            solid_liquid_ratio = (phase_mass / liquid_volume) if liquid_volume > 0 else 0.0
+            technical_kpis["solid_liquid_ratio"] = solid_liquid_ratio
+            st.write(f"**Solid/Liquid Ratio:** {solid_liquid_ratio:.2f}")
+
+            # Opzione per inserire manualmente i valori finali
+            st.markdown("##### Manual Input of Final KPI Values")
+            use_final_values = st.checkbox("Use Final Values Only", key=f"use_final_values_{case_study_name}")
+            if use_final_values:
+                for kpi_name in ["efficiency", "solid_liquid_ratio"]:
+                    manual_value = st.number_input(
+                        f"Final Value for {kpi_name.capitalize()}:",
+                        value=technical_kpis.get(kpi_name, 0.0),
+                        min_value=0.0,
+                        step=0.1,
+                        key=f"manual_{kpi_name}_{case_study_name}"
+                    )
+                    technical_kpis[kpi_name] = manual_value
+
+            # Sezione per aggiungere KPI personalizzati
+            st.markdown("##### Add or Edit Custom KPIs")
+            custom_kpis = technical_kpis.setdefault("custom", {})
+            for kpi_name, kpi_value in list(custom_kpis.items()):
                 col1, col2, col3 = st.columns([3, 2, 1])
                 with col1:
                     new_kpi_name = st.text_input(f"Edit KPI Name ({kpi_name}):", value=kpi_name,
-                                                 key=f"kpi_name_{case_study_name}_{kpi_name}")
+                                                 key=f"custom_kpi_name_{case_study_name}_{kpi_name}")
                 with col2:
                     new_kpi_value = st.number_input(
                         f"Value for {kpi_name}:",
                         value=kpi_value,
                         min_value=0.0,
-                        key=f"kpi_value_{case_study_name}_{kpi_name}"
+                        key=f"custom_kpi_value_{case_study_name}_{kpi_name}"
                     )
                 with col3:
-                    if st.button(f"Remove KPI ({kpi_name})", key=f"remove_kpi_{case_study_name}_{kpi_name}"):
-                        del technical_kpis[kpi_name]
+                    if st.button(f"Remove KPI ({kpi_name})", key=f"remove_custom_kpi_{case_study_name}_{kpi_name}"):
+                        del custom_kpis[kpi_name]
 
-                # Aggiorna il KPI se modificato
+                # Aggiorna KPI personalizzati se modificati
                 if new_kpi_name != kpi_name:
-                    technical_kpis[new_kpi_name] = technical_kpis.pop(kpi_name)
-                technical_kpis[new_kpi_name] = new_kpi_value
+                    custom_kpis[new_kpi_name] = custom_kpis.pop(kpi_name)
+                custom_kpis[new_kpi_name] = new_kpi_value
 
-            # Aggiungi nuovi KPI tecnici
-            new_kpi_name = st.text_input("New KPI Name:", key=f"new_kpi_name_{case_study_name}")
-            new_kpi_value = st.number_input("New KPI Value:", min_value=0.0, key=f"new_kpi_value_{case_study_name}")
-            if st.button("Add Technical KPI", key=f"add_kpi_{case_study_name}"):
-                if new_kpi_name and new_kpi_name not in technical_kpis:
-                    technical_kpis[new_kpi_name] = new_kpi_value
-                    st.success(f"Added new KPI: {new_kpi_name}")
+            # Aggiungi nuovi KPI personalizzati
+            new_custom_kpi_name = st.text_input("New KPI Name:", key=f"new_custom_kpi_name_{case_study_name}")
+            new_custom_kpi_value = st.number_input("New KPI Value:", min_value=0.0,
+                                                   key=f"new_custom_kpi_value_{case_study_name}")
+            if st.button("Add Custom KPI", key=f"add_custom_kpi_{case_study_name}"):
+                if new_custom_kpi_name and new_custom_kpi_name not in custom_kpis:
+                    custom_kpis[new_custom_kpi_name] = new_custom_kpi_value
+                    st.success(f"Added new custom KPI: {new_custom_kpi_name}")
                 else:
                     st.error("KPI name is invalid or already exists!")
 
@@ -1197,22 +1271,14 @@ def literature():
             case_study["technical_kpis"] = technical_kpis
             save_case_studies()
 
-            st.markdown("#### Final Values for KPIs (Optional)")
-            use_final_values = st.checkbox("Use Final Values Only", key=f"use_final_values_{case_study_name}")
-
-            if use_final_values:
-                for kpi_name, kpi_value in technical_kpis.items():
-                    final_value = st.number_input(
-                        f"Final Value for {kpi_name}:",
-                        value=kpi_value,
-                        min_value=0.0,
-                        key=f"final_value_{case_study_name}_{kpi_name}"
-                    )
-                    technical_kpis[kpi_name] = final_value
-                save_case_studies()
+            # Riepilogo dei KPI tecnici
             st.markdown("#### Technical KPI Summary")
             if technical_kpis:
-                kpi_df = pd.DataFrame(list(technical_kpis.items()), columns=["KPI", "Value"])
+                kpi_summary = {
+                    **{k: v for k, v in technical_kpis.items() if k not in ["custom"]},
+                    **{k: v for k, v in technical_kpis.get("custom", {}).items()}
+                }
+                kpi_df = pd.DataFrame(list(kpi_summary.items()), columns=["KPI", "Value"])
                 st.table(kpi_df)
             else:
                 st.info("No Technical KPIs configured.")
