@@ -169,27 +169,29 @@ model = AmelieEconomicModel()
 
 amelie_scenarios_file = os.path.join(data_dir, "amelie_scenarios.json")
 
+# Inizializzazione di st.session_state.amelie_scenarios se non esiste
 if "amelie_scenarios" not in st.session_state:
+    # Usa il file di configurazione o crea un valore di default
+    amelie_scenarios_file = os.path.join(data_dir, "amelie_scenarios.json")
     if os.path.exists(amelie_scenarios_file):
         with open(amelie_scenarios_file, "r") as file:
             try:
+                # Carica gli scenari da file
                 st.session_state.amelie_scenarios = json.load(file)
+                # Assicura che ogni scenario abbia i valori di default
                 for scenario_name, scenario_data in st.session_state.amelie_scenarios.items():
-                    # Assicura che ogni scenario abbia tutti i valori di default
                     default_scenario = get_default_scenario()
                     for key, default_value in default_scenario.items():
                         if key not in scenario_data:
                             scenario_data[key] = default_value
             except json.JSONDecodeError:
-                st.warning("Amelie scenarios file is invalid. Starting with default scenario.")
-                st.session_state.amelie_scenarios = {
-                    "default": get_default_scenario()
-                }
-
+                # Se il file è corrotto, usa il default
+                st.warning("File 'amelie_scenarios.json' non valido. Uso del valore di default.")
+                st.session_state.amelie_scenarios = {"default": get_default_scenario()}
     else:
-        st.session_state.amelie_scenarios = {
-             "default": get_default_scenario()
-            }
+        # Nessun file trovato, inizializza con il default
+        st.session_state.amelie_scenarios = {"default": get_default_scenario()}
+
 
 
 
