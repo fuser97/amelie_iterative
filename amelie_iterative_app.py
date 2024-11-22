@@ -1348,10 +1348,23 @@ def literature():
                     # Calcolo rapporti massa/liquido
                     st.markdown("##### Solid/Liquid Ratios")
                     sl_results = []
+
+                    # Assicura che `liquids` sia un dizionario
+                    if not isinstance(liquids, dict):
+                        st.warning(
+                            f"Expected 'liquids' to be a dictionary, found {type(liquids)}. Resetting to empty dictionary.")
+                        liquids = {}  # Inizializza come dizionario vuoto se necessario
+
+                    # Iterazione su masse e liquidi
                     for mass_type, mass_value in masses.items():
                         for liquid_type, liquid_volume in liquids.items():
+                            # Verifica che `liquid_volume` sia numerico
                             if not isinstance(liquid_volume, (int, float)):
-                                liquid_volume = 0  # Imposta un valore predefinito se il volume non è numerico
+                                st.warning(
+                                    f"Invalid liquid volume for '{liquid_type}' in phase '{phase_name}'. Resetting to 0.")
+                                liquid_volume = 0  # Imposta un valore predefinito se non è numerico
+
+                            # Calcola il rapporto massa/liquido
                             ratio = mass_value / liquid_volume if liquid_volume > 0 else 0
                             sl_results.append({
                                 "Phase": phase_name,
@@ -1364,7 +1377,7 @@ def literature():
 
                     # Calcolo rapporto complessivo
                     total_mass = sum(masses.values())
-                    total_volume = sum(liquids.values())
+                    total_volume = sum(liquids.values()) if liquids else 0
                     overall_ratio = total_mass / total_volume if total_volume > 0 else 0
                     sl_results.append({
                         "Phase": phase_name,
@@ -1375,10 +1388,7 @@ def literature():
                         "S/L Ratio": overall_ratio
                     })
 
-                    # Aggiorna la fase
-                    updated_phases[phase_name] = {"masses": masses, "liquids": liquids}
-
-                    # Mostra risultati
+                    # Mostra risultati in tabella
                     sl_df = pd.DataFrame(sl_results)
                     st.table(sl_df)
 
