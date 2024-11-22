@@ -1350,10 +1350,15 @@ def literature():
                     sl_results = []
 
                     # Assicura che `liquids` sia un dizionario
-                    if not isinstance(liquids, dict):
+                    if isinstance(liquids, list):
+                        # Converti lista in dizionario, usando l'indice come chiave
+                        st.warning(f"Expected 'liquids' to be a dictionary, found a list. Converting to dictionary.")
+                        liquids = {f"Liquid {i + 1}": volume for i, volume in enumerate(liquids)}
+                    elif not isinstance(liquids, dict):
+                        # Inizializza come dizionario vuoto se non è valido
                         st.warning(
                             f"Expected 'liquids' to be a dictionary, found {type(liquids)}. Resetting to empty dictionary.")
-                        liquids = {}  # Inizializza come dizionario vuoto se necessario
+                        liquids = {}
 
                     # Iterazione su masse e liquidi
                     for mass_type, mass_value in masses.items():
