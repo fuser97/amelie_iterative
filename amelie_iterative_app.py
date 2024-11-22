@@ -427,17 +427,15 @@ def economic_kpis():
             capex_table = model.generate_table(current_scenario["capex"])
             st.table(capex_table)
 
-        # OpEx Configuration Section
         elif selected_section == "OpEx Configuration":
             st.subheader("OpEx Configuration")
 
-            # Assicurati che OpEx e consumo energetico siano presenti
-            current_scenario.setdefault("opex", {})
-            current_scenario.setdefault("energy_consumption", {})
-            current_scenario.setdefault("energy_cost", 0.12)
-
             # --- Energy Configuration ---
             st.markdown("### Energy Configuration")
+            if "energy_consumption" not in current_scenario:
+                current_scenario["energy_consumption"] = {}
+
+            # Display energy consumption for each machine
             energy_to_delete = []
             for machine, consumption in current_scenario["energy_consumption"].items():
                 col1, col2, col3 = st.columns([3, 2, 1])
@@ -452,17 +450,17 @@ def economic_kpis():
                     if st.button(f"Remove {machine}", key=f"remove_machine_{selected_scenario}_{machine}"):
                         energy_to_delete.append(machine)
 
-                # Aggiorna i dati nello scenario
+                # Update the machine name or consumption in the scenario
                 if machine_name != machine:
                     current_scenario["energy_consumption"][machine_name] = current_scenario["energy_consumption"].pop(
                         machine)
                 current_scenario["energy_consumption"][machine_name] = machine_consumption
 
-            # Rimuovi le macchine segnate per eliminazione
+            # Remove machines flagged for deletion
             for machine in energy_to_delete:
                 del current_scenario["energy_consumption"][machine]
 
-            # Aggiungi una nuova macchina
+            # Add a new machine
             new_machine_name = st.text_input("New Machine Name:", key="new_machine_name")
             new_machine_consumption = st.number_input("New Machine Consumption (kWh):", min_value=0.0,
                                                       key="new_machine_consumption")
@@ -473,7 +471,7 @@ def economic_kpis():
                 else:
                     st.error("Machine name already exists or is invalid!")
 
-            # Calcola il costo totale dell'energia
+            # Calculate total energy cost
             total_energy_consumption = sum(current_scenario["energy_consumption"].values())
             energy_cost_per_kwh = st.number_input("Cost per kWh (EUR):",
                                                   value=current_scenario.get("energy_cost", 0.12),
@@ -482,14 +480,17 @@ def economic_kpis():
             total_energy_cost = total_energy_consumption * energy_cost_per_kwh
             st.markdown(f"**Total Energy Cost:** {total_energy_cost:.2f} EUR")
 
-            # Aggiungi il costo dell'energia agli OpEx
+            # Add the energy cost to OpEx
             current_scenario["opex"]["Energy"] = total_energy_cost
 
             # --- General OpEx Configuration ---
             st.markdown("### General OpEx Configuration")
+            if "opex" not in current_scenario:
+                current_scenario["opex"] = {}
+
             opex_to_delete = []
             for key, value in current_scenario["opex"].items():
-                if key != "Energy":  # Non permettere modifiche dirette al costo energia
+                if key != "Energy":  # Do not allow direct edits to Energy cost
                     col1, col2, col3 = st.columns([3, 2, 1])
                     with col1:
                         new_name = st.text_input(f"OpEx Name ({key}):", value=key,
@@ -501,16 +502,16 @@ def economic_kpis():
                         if st.button(f"Remove {key}", key=f"remove_opex_{selected_scenario}_{key}"):
                             opex_to_delete.append(key)
 
-                    # Aggiorna i dati nello scenario
+                    # Update the OpEx name or cost
                     if new_name != key:
                         current_scenario["opex"][new_name] = current_scenario["opex"].pop(key)
                     current_scenario["opex"][new_name] = new_cost
 
-            # Rimuovi gli OpEx segnati per l'eliminazione
+            # Remove OpEx items flagged for deletion
             for item in opex_to_delete:
                 del current_scenario["opex"][item]
 
-            # Aggiungi un nuovo OpEx
+            # Add a new OpEx item
             new_opex_name = st.text_input("New OpEx Name:", key="new_opex_name")
             new_opex_cost = st.number_input("New OpEx Cost (EUR):", min_value=0.0, key="new_opex_cost")
             if st.button("Add OpEx"):
@@ -520,17 +521,18 @@ def economic_kpis():
                 else:
                     st.error("OpEx item already exists or is invalid!")
 
-            # Salva i dati aggiornati
+            # Save the updated scenario
             st.session_state.amelie_scenarios[selected_scenario] = current_scenario
             save_amelie_scenarios()
 
-            # Visualizza i risultati aggiornati
+            # Display updated results
             st.subheader("Updated OpEx Breakdown")
             opex_chart = model.generate_pie_chart(current_scenario["opex"], "OpEx Breakdown")
             st.image(opex_chart, caption="OpEx Breakdown", use_container_width=True)
 
             opex_table = model.generate_table(current_scenario["opex"])
             st.table(opex_table)
+
 
 
 
