@@ -1157,7 +1157,7 @@ def literature():
             opex_table = model.generate_table(opex_data)
             st.table(opex_table)
 
-            # Technical KPIs Section
+            # Technical KPIs Section in Literature
             st.markdown("#### Technical KPIs")
             technical_kpis = case_study.setdefault("technical_kpis", {})
 
@@ -1200,6 +1200,55 @@ def literature():
                     value=technical_kpis.get("phase_mass", 0.0),
                     step=0.1,
                     key=f"phase_mass_{case_study_name}"
+                )
+                technical_kpis["phase_mass"] = phase_mass
+
+            with col2:
+                liquid_volume = st.number_input(
+                    "Liquid Volume (L):",
+                    min_value=0.0,
+                    value=technical_kpis.get("liquid_volume", 0.0),
+                    step=0.1,
+                    key=f"liquid_volume_{case_study_name}"
+                )
+                technical_kpis["liquid_volume"] = liquid_volume
+
+            # Calcolo Solid/Liquid Ratio
+            solid_liquid_ratio = (phase_mass / liquid_volume) if liquid_volume > 0 else 0.0
+            technical_kpis["solid_liquid_ratio"] = solid_liquid_ratio
+            st.write(f"**Solid/Liquid Ratio:** {solid_liquid_ratio:.2f}")
+
+            # Opzione per inserire manualmente i valori finali
+            st.markdown("##### Manual Input of Final KPI Values")
+            use_final_values = st.checkbox("Use Final Values Only", key=f"use_final_values_{case_study_name}")
+            if use_final_values:
+                for kpi_name in ["efficiency", "solid_liquid_ratio"]:
+                    manual_value = st.number_input(
+                        f"Final Value for {kpi_name.capitalize()}:",
+                        value=technical_kpis.get(kpi_name, 0.0),
+                        min_value=0.0,
+                        step=0.1,
+                        key=f"manual_{kpi_name}_{case_study_name}"
+                    )
+                    technical_kpis[kpi_name] = manual_value
+
+            # Salva i KPI aggiornati
+            case_study["technical_kpis"] = technical_kpis
+            save_case_studies()
+
+            # Riepilogo dei KPI tecnici
+            st.markdown("#### Technical KPI Summary")
+            if technical_kpis:
+                kpi_summary = {
+                    **{k: v for k, v in technical_kpis.items() if k not in ["custom"]},
+                    **{k: v for k, v in technical_kpis.get("custom", {}).items()}
+                }
+                kpi_df = pd.DataFrame(list(kpi_summary.items()), columns=["KPI", "Value"])
+                st.table(kpi_df)
+            else:
+                st.info("No Technical KPIs configured.")
+
+                key=f"phase_mass_{case_study_name}"
                 )
                 technical_kpis["phase_mass"] = phase_mass
 
