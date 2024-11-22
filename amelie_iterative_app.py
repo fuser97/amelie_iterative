@@ -57,37 +57,18 @@ if "case_studies" not in st.session_state:
 
 class AmelieEconomicModel:
     def __init__(self):
-        self.capex = {
-            'Leaching Reactor': 20000,
-            'Press Filter': 15000,
-            'Precipitation Reactor': 18000,
-            'Solvent Extraction Unit': 30000,
-            'Microwave Thermal Treatment Unit': 25000,
-            'Pre-treatment Dryer': 15000,
-            'Secondary Dryer': 12000,
-            'Wastewater Treatment Unit': 18000
-        }
-        self.opex = {
-            'Reagents': 90,
-            'Labor': 80,
-            'Maintenance': 20,
-            'Disposal': 12.5,
-            'Malic Acid': 8.0,
-            'Hydrogen Peroxide': 4.0,
-            'Lithium Precipitation Reagents': 5.0,
-            'Co/Ni/Mn Precipitation Reagents': 7.0,
-            'Wastewater Treatment Chemicals': 6.0
-        }
+        self.capex = get_default_capex()  # Usa la funzione per i valori di default
+        self.opex = get_default_opex()    # Usa la funzione per i valori di default
         self.energy_consumption = {
-            'Leaching Reactor': 5,
-            'Press Filter': 3,
-            'Precipitation Reactor': 4,
-            'Solvent Extraction Unit': 6,
-            'Microwave Thermal Treatment': 2.5
+            "Leaching Reactor": 5,
+            "Press Filter": 3,
+            "Precipitation Reactor": 4,
+            "Solvent Extraction Unit": 6,
+            "Microwave Thermal Treatment": 2.5
         }
         self.energy_cost = st.session_state.get("amelie_energy_cost", 0.12)  # Default 0.12 EUR per kWh
-  # EUR per kWh
         self.black_mass = 10
+
 
     def calculate_totals(self):
         capex_total = sum(self.capex.values())
