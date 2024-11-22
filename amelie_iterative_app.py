@@ -416,6 +416,7 @@ def economic_kpis():
 
 
 
+
     elif selected_section == "OpEx Configuration":
 
         st.subheader("OpEx Configuration")
@@ -435,7 +436,7 @@ def economic_kpis():
 
             "Energy Cost (EUR/kWh):",
 
-            value=current_scenario.get("energy_cost", 0.12),
+            value=float(current_scenario.get("energy_cost", 0.12)),  # Forza a float
 
             min_value=0.0,
 
@@ -471,7 +472,7 @@ def economic_kpis():
 
                     f"Consumption (kWh) for {machine}:",
 
-                    value=consumption,
+                    value=float(consumption),  # Forza a float
 
                     min_value=0.0,
 
@@ -515,7 +516,7 @@ def economic_kpis():
 
             if new_machine_name and new_machine_name not in current_scenario["energy_consumption"]:
 
-                current_scenario["energy_consumption"][new_machine_name] = new_machine_consumption
+                current_scenario["energy_consumption"][new_machine_name] = float(new_machine_consumption)
 
                 st.success(f"Added new machine: {new_machine_name}")
 
@@ -563,7 +564,7 @@ def economic_kpis():
 
                         f"OpEx Cost (EUR) for {key}:",
 
-                        value=value,
+                        value=float(value),  # Forza a float
 
                         min_value=0.0,
 
@@ -592,13 +593,21 @@ def economic_kpis():
 
         new_opex_name = st.text_input("New OpEx Name:", key=f"new_opex_name_{selected_scenario}")
 
-        new_opex_cost = st.number_input("New OpEx Cost (EUR):", min_value=0.0, key=f"new_opex_cost_{selected_scenario}")
+        new_opex_cost = st.number_input(
+
+            "New OpEx Cost (EUR):",
+
+            min_value=0.0,
+
+            key=f"new_opex_cost_{selected_scenario}"
+
+        )
 
         if st.button("Add OpEx", key=f"add_opex_{selected_scenario}"):
 
             if new_opex_name and new_opex_name not in current_opex:
 
-                current_opex[new_opex_name] = new_opex_cost
+                current_opex[new_opex_name] = float(new_opex_cost)  # Forza a float
 
                 st.success(f"Added new OpEx item: {new_opex_name}")
 
@@ -623,6 +632,7 @@ def economic_kpis():
         opex_table = model.generate_table(current_opex)
 
         st.table(opex_table)
+
 
 
 
