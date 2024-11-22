@@ -432,61 +432,56 @@ def economic_kpis():
 
             st.subheader("OpEx Configuration")
 
-            # --- Inizializzazione dai valori di default ---
+            # Verifica che lo scenario corrente sia valido
 
-            default_opex = get_default_opex()  # Funzione per caricare il dizionario di default
+            if selected_scenario not in st.session_state.amelie_scenarios:
+                st.session_state.amelie_scenarios[selected_scenario] = get_default_scenario()
 
-            default_energy = model.energy_consumption.copy()
+            current_scenario = st.session_state.amelie_scenarios[selected_scenario]
 
-            # Assicurati che i dati iniziali siano nel session_state
+            # Inizializza le chiavi necessarie nello stato dello scenario corrente
 
-            if "opex_data" not in st.session_state:
-                st.session_state.opex_data = default_opex.copy()
+            if "opex" not in current_scenario:
+                current_scenario["opex"] = get_default_opex()
 
-            if "energy_data" not in st.session_state:
-                st.session_state.energy_data = default_energy.copy()
+            if "energy_consumption" not in current_scenario:
+                current_scenario["energy_consumption"] = model.energy_consumption.copy()
 
-            # Copie temporanee per modifica
-
-            energy_data_temp = st.session_state.energy_data.copy()
-
-            opex_data_temp = st.session_state.opex_data.copy()
-
-            # --- Configurazione energia ---
+            # --- Configurazione Energia ---
 
             st.markdown("### Energy Configuration")
 
             energy_cost = st.number_input(
 
-                "Cost per kWh (EUR):",
+                "Energy Cost (EUR/kWh):",
 
-                value=st.session_state.get("amelie_energy_cost", 0.12),
+                value=current_scenario.get("energy_cost", 0.12),
 
                 min_value=0.0,
 
-                key="amelie_energy_cost_input"
+                key=f"energy_cost_{selected_scenario}"
 
             )
 
-            st.session_state.amelie_energy_cost = energy_cost
+            current_scenario["energy_cost"] = energy_cost
 
-            model.energy_cost = energy_cost
+            # Modifica delle apparecchiature di consumo energetico
 
             energy_to_delete = []
 
-            for key, value in energy_data_temp.items():
+            for machine, consumption in current_scenario["energy_consumption"].items():
 
                 col1, col2, col3 = st.columns([3, 2, 1])
 
                 with col1:
 
-                    new_name = st.text_input(
+                    new_machine = st.text_input(
 
-                        f"Edit Energy Equipment ({key}):",
+                        f"Machine Name ({machine}):",
 
-                        value=key,
+                        value=machine,
 
-                        key=f"energy_name_{key}"
+                        key=f"machine_name_{selected_scenario}_{machine}"
 
                     )
 
@@ -494,48 +489,70 @@ def economic_kpis():
 
                     new_consumption = st.number_input(
 
-                        f"Energy Consumption (kWh) for {key}:",
+                        f"Consumption (kWh) for {machine}:",
 
-                        value=float(value),
+                        value=consumption,
 
                         min_value=0.0,
 
-                        key=f"energy_value_{key}"
+                        key=f"machine_consumption_{selected_scenario}_{machine}"
 
                     )
 
                 with col3:
 
-                    if st.button(f"Remove {key}", key=f"remove_energy_{key}"):
-                        energy_to_delete.append(key)
+                    if st.button(f"Remove {machine}", key=f"remove_machine_{selected_scenario}_{machine}"):
+                        energy_to_delete.append(machine)
 
-                # Aggiorna i dati temporanei
+                # Aggiorna il dizionario se il nome è stato modificato
 
-                if new_name != key:
-                    energy_data_temp[new_name] = energy_data_temp.pop(key)
+                if new_machine != machine:
+                    current_scenario["energy_consumption"][new_machine] = current_scenario["energy_consumption"].pop(
+                        machine)
 
-                energy_data_temp[new_name] = new_consumption
+                current_scenario["energy_consumption"][new_machine] = new_consumption
 
-            for item in energy_to_delete:
-                del energy_data_temp[item]
+            # Rimuovi le apparecchiature eliminate
 
-            # Calcola e aggiungi il costo dell'energia agli OpEx
+            for machine in energy_to_delete:
+                del current_scenario["energy_consumption"][machine]
 
-            total_energy_consumption = sum(energy_data_temp.values())
+            # Aggiungi una nuova apparecchiatura
+
+            new_machine_name = st.text_input("New Machine Name:", key=f"new_machine_name_{selected_scenario}")
+
+            new_machine_consumption = st.number_input("New Machine Consumption (kWh):", min_value=0.0,
+                                                      key=f"new_machine_consumption_{selected_scenario}")
+
+            if st.button("Add Machine", key=f"add_machine_{selected_scenario}"):
+
+                if new_machine_name and new_machine_name not in current_scenario["energy_consumption"]:
+
+                    current_scenario["energy_consumption"][new_machine_name] = new_machine_consumption
+
+                    st.success(f"Added new machine: {new_machine_name}")
+
+                else:
+
+                    st.error("Invalid or duplicate machine name!")
+
+            # Calcola il costo totale dell'energia
+
+            total_energy_consumption = sum(current_scenario["energy_consumption"].values())
 
             total_energy_cost = total_energy_consumption * energy_cost
 
-            opex_data_temp["Energy"] = total_energy_cost
+            current_scenario["opex"]["Energy"] = total_energy_cost
 
             st.markdown(f"**Total Energy Cost:** {total_energy_cost:.2f} EUR")
 
-            # --- Configurazione generale OpEx ---
+            # --- Configurazione OpEx Generale ---
 
             st.markdown("### General OpEx Configuration")
 
             opex_to_delete = []
 
-            for key, value in opex_data_temp.items():
+            for key, value in current_scenario["opex"].items():
 
                 if key != "Energy":  # Non permettere modifiche dirette al costo energia
 
@@ -545,11 +562,11 @@ def economic_kpis():
 
                         new_name = st.text_input(
 
-                            f"Edit OpEx Name ({key}):",
+                            f"OpEx Name ({key}):",
 
                             value=key,
 
-                            key=f"opex_name_{key}"
+                            key=f"opex_name_{selected_scenario}_{key}"
 
                         )
 
@@ -557,62 +574,65 @@ def economic_kpis():
 
                         new_cost = st.number_input(
 
-                            f"Edit Cost (EUR) for {key}:",
+                            f"OpEx Cost (EUR) for {key}:",
 
-                            value=float(value),
+                            value=value,
 
                             min_value=0.0,
 
-                            key=f"opex_cost_{key}"
+                            key=f"opex_cost_{selected_scenario}_{key}"
 
                         )
 
                     with col3:
 
-                        if st.button(f"Remove {key}", key=f"remove_opex_{key}"):
+                        if st.button(f"Remove {key}", key=f"remove_opex_{selected_scenario}_{key}"):
                             opex_to_delete.append(key)
 
-                    # Aggiorna i dati temporanei
+                    # Aggiorna il dizionario se il nome è stato modificato
 
                     if new_name != key:
-                        opex_data_temp[new_name] = opex_data_temp.pop(key)
+                        current_scenario["opex"][new_name] = current_scenario["opex"].pop(key)
 
-                    opex_data_temp[new_name] = new_cost
+                    current_scenario["opex"][new_name] = new_cost
+
+            # Rimuovi gli elementi OpEx eliminati
 
             for item in opex_to_delete:
-                del opex_data_temp[item]
+                del current_scenario["opex"][item]
 
-            # Aggiungi un nuovo OpEx
+            # Aggiungi un nuovo elemento OpEx
 
-            new_opex_name = st.text_input("New OpEx Name:", key="new_opex_name_input")
+            new_opex_name = st.text_input("New OpEx Name:", key=f"new_opex_name_{selected_scenario}")
 
-            new_opex_cost = st.number_input("New OpEx Cost (EUR):", min_value=0.0, key="new_opex_cost_input")
+            new_opex_cost = st.number_input("New OpEx Cost (EUR):", min_value=0.0,
+                                            key=f"new_opex_cost_{selected_scenario}")
 
-            if st.button("Add OpEx", key="add_opex_input"):
+            if st.button("Add OpEx", key=f"add_opex_{selected_scenario}"):
 
-                if new_opex_name and new_opex_name not in opex_data_temp:
+                if new_opex_name and new_opex_name not in current_scenario["opex"]:
 
-                    opex_data_temp[new_opex_name] = new_opex_cost
+                    current_scenario["opex"][new_opex_name] = new_opex_cost
 
                     st.success(f"Added new OpEx item: {new_opex_name}")
 
                 else:
 
-                    st.error("OpEx item already exists or name is invalid!")
+                    st.error("Invalid or duplicate OpEx name!")
 
-            # --- Aggiorna lo stato di sessione ---
+            # Salva lo scenario aggiornato
 
-            st.session_state.energy_data = energy_data_temp
+            st.session_state.amelie_scenarios[selected_scenario] = current_scenario
 
-            st.session_state.opex_data = opex_data_temp
+            save_amelie_scenarios()
 
             # --- Visualizza grafico e tabella OpEx ---
 
-            opex_chart = model.generate_pie_chart(opex_data_temp, "OpEx Breakdown")
+            opex_chart = model.generate_pie_chart(current_scenario["opex"], "OpEx Breakdown")
 
             st.image(opex_chart, caption="OpEx Breakdown", use_column_width=True)
 
-            opex_table = model.generate_table(opex_data_temp)
+            opex_table = model.generate_table(current_scenario["opex"])
 
             st.table(opex_table)
 
