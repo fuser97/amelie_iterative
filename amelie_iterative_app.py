@@ -1249,7 +1249,7 @@ def literature():
                 st.info("No Technical KPIs configured.")
 
                 key=f"phase_mass_{case_study_name}"
-                )
+                
                 technical_kpis["phase_mass"] = phase_mass
 
             with col2:
