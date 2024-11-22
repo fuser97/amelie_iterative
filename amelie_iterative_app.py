@@ -249,15 +249,21 @@ def economic_kpis():
     # Inizializza i dati dello scenario selezionato
     current_scenario = st.session_state.amelie_scenarios[selected_scenario]
 
-    # Verifica e inizializza le chiavi principali dello scenario se non esistono
-    if "capex" not in current_scenario:
-        current_scenario["capex"] = {}
-    if "opex" not in current_scenario:
-        current_scenario["opex"] = {}
-    if "energy_cost" not in current_scenario:
-        current_scenario["energy_cost"] = 0.12  # Default EUR per kWh
-    if "energy_consumption" not in current_scenario:
-        current_scenario["energy_consumption"] = {}
+    # Inizializza le chiavi nello stato di sessione se non esistono
+    if "capex_data" not in st.session_state:
+        st.session_state.capex_data = {}
+    if "opex_data" not in st.session_state:
+        st.session_state.opex_data = {}
+    if "energy_data" not in st.session_state:
+        st.session_state.energy_data = {}
+    if "assumptions" not in st.session_state:
+        st.session_state.assumptions = [
+            "Batch Size (10 kg)",
+            "1 Operator per Batch",
+            "Process Includes: Pre-treatment, microwave thermal treatment, leaching in water, precipitation, secondary drying, leaching in acid, and wastewater treatment"
+        ]
+    if "energy_cost" not in st.session_state:
+        st.session_state.energy_cost = 0.12  # Valore di default
 
     # Aggiorna i dati del modello con lo scenario corrente
     model.capex = current_scenario["capex"]
