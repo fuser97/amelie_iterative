@@ -249,6 +249,16 @@ def economic_kpis():
     # Inizializza i dati dello scenario selezionato
     current_scenario = st.session_state.amelie_scenarios[selected_scenario]
 
+    # Verifica e inizializza le chiavi principali dello scenario se non esistono
+    if "capex" not in current_scenario:
+        current_scenario["capex"] = {}
+    if "opex" not in current_scenario:
+        current_scenario["opex"] = {}
+    if "energy_cost" not in current_scenario:
+        current_scenario["energy_cost"] = 0.12  # Default EUR per kWh
+    if "energy_consumption" not in current_scenario:
+        current_scenario["energy_consumption"] = {}
+
     # Aggiorna i dati del modello con lo scenario corrente
     model.capex = current_scenario["capex"]
     model.opex = current_scenario["opex"]
@@ -299,6 +309,10 @@ def economic_kpis():
     elif selected_section == "CapEx Configuration":
         st.subheader("CapEx Configuration")
         # Update CapEx
+        # Verifica che "capex" esista nello scenario corrente
+        if "capex" not in current_scenario:
+            current_scenario["capex"] = {}
+
         capex_to_delete = []
         for key, value in current_scenario["capex"].items():
             col1, col2, col3 = st.columns([3, 2, 1])
@@ -308,11 +322,10 @@ def economic_kpis():
             with col2:
                 new_cost = st.number_input(
                     f"CapEx Cost ({key}):",
-                    value=float(value),  # Forza a float
-                    min_value=0.0,  # Float coerente
+                    value=float(value),
+                    min_value=0.0,
                     key=f"capex_cost_{selected_scenario}_{key}"
                 )
-
             with col3:
                 if st.button(f"Remove CapEx ({key})", key=f"remove_capex_{selected_scenario}_{key}"):
                     capex_to_delete.append(key)
@@ -359,8 +372,11 @@ def economic_kpis():
         save_amelie_config()
 
         # Add, edit, and delete energy equipment
-        energy_to_delete = []
-        for key, value in energy_data_temp.items():
+        # Verifica che "energy_consumption" esista nello scenario corrente
+        if "energy_consumption" not in current_scenario:
+            current_scenario["energy_consumption"] = {}
+
+        for key, value in current_scenario["energy_consumption"].items():
             col1, col2, col3 = st.columns([3, 2, 1])
             with col1:
                 new_name = st.text_input(
@@ -379,10 +395,9 @@ def economic_kpis():
                 if st.button(f"Remove {key}", key=f"remove_energy_{key}"):
                     energy_to_delete.append(key)
 
-            # Update temporary energy data
             if new_name != key:
-                energy_data_temp[new_name] = energy_data_temp.pop(key)
-            energy_data_temp[new_name] = new_consumption
+                current_scenario["energy_consumption"][new_name] = current_scenario["energy_consumption"].pop(key)
+            current_scenario["energy_consumption"][new_name] = new_consumption
 
         # Remove deleted energy items
         for item in energy_to_delete:
@@ -409,9 +424,13 @@ def economic_kpis():
 
         # General OpEx Configuration
         st.markdown("### General OpEx Configuration")
+        # Verifica che "opex" esista nello scenario corrente
+        if "opex" not in current_scenario:
+            current_scenario["opex"] = {}
+
         opex_to_delete = []
-        for key, value in opex_data_temp.items():
-            if key != "Energy":  # Skip energy as it is dynamically calculated
+        for key, value in current_scenario["opex"].items():
+            if key != "Energy":  # Skip dynamically calculated energy cost
                 col1, col2, col3 = st.columns([3, 2, 1])
                 with col1:
                     new_name = st.text_input(
@@ -430,10 +449,9 @@ def economic_kpis():
                     if st.button(f"Remove {key}", key=f"remove_opex_{key}"):
                         opex_to_delete.append(key)
 
-                # Update temporary OpEx data
                 if new_name != key:
-                    opex_data_temp[new_name] = opex_data_temp.pop(key)
-                opex_data_temp[new_name] = new_cost
+                    current_scenario["opex"][new_name] = current_scenario["opex"].pop(key)
+                current_scenario["opex"][new_name] = new_cost
 
         # Remove deleted OpEx items
         for item in opex_to_delete:
@@ -442,10 +460,13 @@ def economic_kpis():
         # Salva lo scenario
         save_amelie_scenarios()
 
-        # Update Energy Cost
+        # Verifica che "energy_cost" esista nello scenario corrente
+        if "energy_cost" not in current_scenario:
+            current_scenario["energy_cost"] = 0.12  # Default value
+
         current_scenario["energy_cost"] = st.number_input(
             "Energy Cost (EUR/kWh):",
-            value=current_scenario.get("energy_cost", 0.12),
+            value=current_scenario["energy_cost"],
             min_value=0.0,
             key=f"energy_cost_{selected_scenario}"
         )
