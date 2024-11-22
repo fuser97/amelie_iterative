@@ -430,21 +430,17 @@ def economic_kpis():
             # --- Energy Configuration ---
             st.markdown("### Energy Configuration")
 
-            # Calcolo dinamico del costo totale dell'energia
+            # Gestione delle macchine e del consumo energetico
             energy_to_delete = []
             for machine, consumption in current_scenario["energy_consumption"].items():
                 col1, col2, col3 = st.columns([3, 2, 1])
                 with col1:
-                    machine_name = st.text_input(
-                        f"Machine Name ({machine}):", value=machine,
-                        key=f"machine_name_{selected_scenario}_{machine}"
-                    )
+                    machine_name = st.text_input(f"Machine Name ({machine}):", value=machine,
+                                                 key=f"machine_name_{selected_scenario}_{machine}")
                 with col2:
-                    machine_consumption = st.number_input(
-                        f"Energy Consumption (kWh) for {machine}:",
-                        value=consumption, min_value=0.0,
-                        key=f"machine_consumption_{selected_scenario}_{machine}"
-                    )
+                    machine_consumption = st.number_input(f"Energy Consumption (kWh) for {machine}:",
+                                                          value=consumption, min_value=0.0,
+                                                          key=f"machine_consumption_{selected_scenario}_{machine}")
                 with col3:
                     if st.button(f"Remove {machine}", key=f"remove_machine_{selected_scenario}_{machine}"):
                         energy_to_delete.append(machine)
@@ -525,7 +521,7 @@ def economic_kpis():
                 else:
                     st.error("OpEx item already exists or is invalid!")
 
-            # Salva le modifiche
+            # Salva le modifiche nello stato di sessione e nei file
             st.session_state.amelie_scenarios[selected_scenario] = current_scenario
             save_amelie_scenarios()
 
