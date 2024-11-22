@@ -209,7 +209,7 @@ if "amelie_scenarios" not in st.session_state:
         st.session_state.amelie_scenarios = {
              "default": get_default_scenario()
             }
-        }
+        
 
 
 
