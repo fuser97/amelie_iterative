@@ -138,34 +138,78 @@ class AmelieEconomicModel:
         df.loc[len(df)] = ['Total', total]
         return df
 
+def get_default_capex():
+    return {
+        'Leaching Reactor': 20000,
+        'Press Filter': 15000,
+        'Precipitation Reactor': 18000,
+        'Solvent Extraction Unit': 30000,
+        'Microwave Thermal Treatment Unit': 25000,
+        'Pre-treatment Dryer': 15000,
+        'Secondary Dryer': 12000,
+        'Wastewater Treatment Unit': 18000
+    }
+
+def get_default_opex():
+    return {
+        'Reagents': 90,
+        'Labor': 80,
+        'Maintenance': 20,
+        'Disposal': 12.5,
+        'Malic Acid': 8.0,
+        'Hydrogen Peroxide': 4.0,
+        'Lithium Precipitation Reagents': 5.0,
+        'Co/Ni/Mn Precipitation Reagents': 7.0,
+        'Wastewater Treatment Chemicals': 6.0
+    }
+
+def get_default_scenario():
+    return {
+        "capex": get_default_capex(),  # Funzione per il CapEx di default
+        "opex": get_default_opex(),    # Funzione per l'OpEx di default
+        "energy_cost": 0.12,           # Default: 0.12 EUR/kWh
+        "energy_consumption": {
+            "Leaching Reactor": 5,
+            "Press Filter": 3,
+            "Precipitation Reactor": 4,
+            "Solvent Extraction Unit": 6,
+            "Microwave Thermal Treatment": 2.5
+        },
+        "assumptions": [
+            "Batch Size (10 kg)",
+            "1 Operator per Batch",
+            "Process Includes: Pre-treatment, microwave thermal treatment, leaching in water, precipitation, secondary drying, leaching in acid, and wastewater treatment"
+        ]
+    }
+
 
 # Initialize Model
 model = AmelieEconomicModel()
 
 amelie_scenarios_file = os.path.join(data_dir, "amelie_scenarios.json")
 
-# Load Amelie scenarios into session state on app start
 if "amelie_scenarios" not in st.session_state:
     if os.path.exists(amelie_scenarios_file):
         with open(amelie_scenarios_file, "r") as file:
             try:
                 st.session_state.amelie_scenarios = json.load(file)
+                for scenario_name, scenario_data in st.session_state.amelie_scenarios.items():
+                    # Assicura che ogni scenario abbia tutti i valori di default
+                    default_scenario = get_default_scenario()
+                    for key, default_value in default_scenario.items():
+                        if key not in scenario_data:
+                            scenario_data[key] = default_value
             except json.JSONDecodeError:
                 st.warning("Amelie scenarios file is invalid. Starting with default scenario.")
-                st.session_state.amelie_scenarios = {"default": {
-                    "capex": model.capex.copy(),
-                    "opex": model.opex.copy(),
-                    "energy_cost": model.energy_cost,
-                    "energy_consumption": model.energy_consumption.copy()
-                }}
+                st.session_state.amelie_scenarios = {
+                    "default": get_default_scenario()
+                }
+
     else:
-        # Se il file non esiste, inizializza con lo scenario di default
-        st.session_state.amelie_scenarios = {"default": {
-            "capex": model.capex.copy(),
-            "opex": model.opex.copy(),
-            "energy_cost": model.energy_cost,
-            "energy_consumption": model.energy_consumption.copy()
-        }}
+        st.session_state.amelie_scenarios = {
+             "default": get_default_scenario()
+            }
+        }
 
 
 
@@ -193,20 +237,18 @@ if selected_scenario == "Create New Scenario":
     new_scenario_name = st.sidebar.text_input("New Scenario Name:")
     if st.sidebar.button("Create Scenario"):
         if new_scenario_name and new_scenario_name not in st.session_state.amelie_scenarios:
-            # Crea uno scenario di default
             default_scenario = {
-                "capex": model.capex.copy(),
-                "opex": model.opex.copy(),
-                "energy_cost": model.energy_cost,
-                "energy_consumption": model.energy_consumption.copy()
+                "capex": get_default_capex(),
+                "opex": get_default_opex(),
+                "energy_cost": 0.12,
+                "energy_consumption": {}
             }
-            # Aggiungi il nuovo scenario
             st.session_state.amelie_scenarios[new_scenario_name] = default_scenario
             st.success(f"Scenario '{new_scenario_name}' created.")
-            # Cambia il selezionato al nuovo scenario creato
             selected_scenario = new_scenario_name
         else:
             st.error("Invalid or duplicate scenario name!")
+
 
 
 # Sidebar navigation
@@ -251,9 +293,10 @@ def economic_kpis():
 
     # Inizializza le chiavi nello stato di sessione se non esistono
     if "capex_data" not in st.session_state:
-        st.session_state.capex_data = {}
+        st.session_state.capex_data = get_default_capex()
     if "opex_data" not in st.session_state:
-        st.session_state.opex_data = {}
+        st.session_state.opex_data = get_default_opex()
+
     if "energy_data" not in st.session_state:
         st.session_state.energy_data = {}
     if "assumptions" not in st.session_state:
@@ -512,13 +555,13 @@ def economic_kpis():
         st.write(f"**Total OpEx (including energy):** {opex_total} EUR")
 
         capex_chart = model.generate_pie_chart(st.session_state.capex_data, "CapEx Breakdown")
-        st.image(capex_chart, caption="CapEx Breakdown", use_column_width=True)
+        st.image(capex_chart, caption="CapEx Breakdown", use_container_width=True)
 
         capex_table = model.generate_table(st.session_state.capex_data)
         st.table(capex_table)
 
         opex_chart = model.generate_pie_chart(st.session_state.opex_data, "OpEx Breakdown")
-        st.image(opex_chart, caption="OpEx Breakdown", use_column_width=True)
+        st.image(opex_chart, caption="OpEx Breakdown", use_container_width=True)
 
         opex_table = model.generate_table(st.session_state.opex_data)
         st.table(opex_table)
