@@ -433,14 +433,9 @@ def economic_kpis():
 
 
         elif selected_section == "OpEx Configuration":
-
-            st.write("Current OpEx Data:", current_scenario.get("opex", "OpEx not found"))
-
-            # Aggiungi questa riga all'inizio del blocco "OpEx Configuration"
-            elif selected_section == "OpEx Configuration":
             st.write("Rendering OpEx Configuration Section")
-
             st.subheader("OpEx Configuration")
+            st.write("Current OpEx Data:", current_scenario.get("opex", "OpEx not found"))
 
             # Verifica che lo scenario corrente sia valido
 
