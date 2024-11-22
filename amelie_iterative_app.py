@@ -288,8 +288,18 @@ def economic_kpis():
         st.warning("Please create a new scenario before proceeding.")
         return  # Ferma l'esecuzione della funzione
 
-    # Inizializza i dati dello scenario selezionato
+    # Recupera lo scenario selezionato o usa il default
+    if selected_scenario not in st.session_state.amelie_scenarios:
+        st.session_state.amelie_scenarios[selected_scenario] = get_default_scenario()
+
+    # Recupera i dati dello scenario corrente
     current_scenario = st.session_state.amelie_scenarios[selected_scenario]
+
+    # Assicurati che lo scenario abbia tutti i valori di default
+    default_scenario = get_default_scenario()
+    for key, default_value in default_scenario.items():
+        if key not in current_scenario:
+            current_scenario[key] = default_value
 
     # Inizializza le chiavi nello stato di sessione se non esistono
     if "capex_data" not in st.session_state:
@@ -421,12 +431,13 @@ def economic_kpis():
         elif selected_section == "OpEx Configuration":
             st.subheader("OpEx Configuration")
 
+            # Assicurati che OpEx e consumo energetico siano presenti
+            current_scenario.setdefault("opex", {})
+            current_scenario.setdefault("energy_consumption", {})
+            current_scenario.setdefault("energy_cost", 0.12)
+
             # --- Energy Configuration ---
             st.markdown("### Energy Configuration")
-            if "energy_consumption" not in current_scenario:
-                current_scenario["energy_consumption"] = {}
-
-            # Mostra le macchine e il loro consumo energetico
             energy_to_delete = []
             for machine, consumption in current_scenario["energy_consumption"].items():
                 col1, col2, col3 = st.columns([3, 2, 1])
@@ -447,7 +458,7 @@ def economic_kpis():
                         machine)
                 current_scenario["energy_consumption"][machine_name] = machine_consumption
 
-            # Rimuovi le macchine segnate per l'eliminazione
+            # Rimuovi le macchine segnate per eliminazione
             for machine in energy_to_delete:
                 del current_scenario["energy_consumption"][machine]
 
@@ -476,9 +487,6 @@ def economic_kpis():
 
             # --- General OpEx Configuration ---
             st.markdown("### General OpEx Configuration")
-            if "opex" not in current_scenario:
-                current_scenario["opex"] = {}
-
             opex_to_delete = []
             for key, value in current_scenario["opex"].items():
                 if key != "Energy":  # Non permettere modifiche dirette al costo energia
@@ -523,6 +531,7 @@ def economic_kpis():
 
             opex_table = model.generate_table(current_scenario["opex"])
             st.table(opex_table)
+
 
 
     # Results Section
