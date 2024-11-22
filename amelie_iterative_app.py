@@ -249,7 +249,10 @@ if selected_scenario == "Create New Scenario":
         else:
             st.error("Invalid or duplicate scenario name!")
 
-
+# Pulsante per resettare la sessione
+if st.sidebar.button("Reset Session"):
+    st.session_state.clear()
+    st.success("Session reset successfully. Reload the page.")
 
 # Sidebar navigation
 st.sidebar.title("Navigation")
@@ -428,7 +431,14 @@ def economic_kpis():
             st.table(capex_table)
 
 
+
         elif selected_section == "OpEx Configuration":
+
+            st.write("Current OpEx Data:", current_scenario.get("opex", "OpEx not found"))
+
+            # Aggiungi questa riga all'inizio del blocco "OpEx Configuration"
+            elif selected_section == "OpEx Configuration":
+            st.write("Rendering OpEx Configuration Section")
 
             st.subheader("OpEx Configuration")
 
@@ -670,6 +680,7 @@ def technical_kpis():
     # Add a section dropdown
     sections = ["Material Composition", "Efficiency Calculation", "Solid/Liquid Ratios"]
     selected_section = st.selectbox("Jump to Section:", sections)
+    st.write(f"Selected Section: {selected_section}")  # Debug
 
     # Material Composition Section
     if selected_section == "Material Composition":
