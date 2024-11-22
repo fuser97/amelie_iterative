@@ -572,7 +572,7 @@ def economic_kpis():
         capex_chart = model.generate_pie_chart(current_scenario["capex"], "CapEx Breakdown")
         st.image(capex_chart, caption="CapEx Breakdown", use_container_width=True)
 
-        capex_table = model.generate_table(scurrent_scenario["capex"])
+        capex_table = model.generate_table(current_scenario["capex"])
         st.table(capex_table)
 
         opex_chart = model.generate_pie_chart(current_scenario["opex"], "OpEx Breakdown")
