@@ -366,6 +366,9 @@ def economic_kpis():
         # Energy Configuration
         st.markdown("### Energy Configuration")
 
+        # Inizializza la lista per raccogliere elementi da eliminare
+        energy_to_delete = []
+
         # Update energy cost
         energy_cost = st.number_input(
             "Cost per kWh (EUR):",
