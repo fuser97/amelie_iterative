@@ -1350,6 +1350,8 @@ def literature():
                     sl_results = []
                     for mass_type, mass_value in masses.items():
                         for liquid_type, liquid_volume in liquids.items():
+                            if not isinstance(liquid_volume, (int, float)):
+                                liquid_volume = 0  # Imposta un valore predefinito se il volume non è numerico
                             ratio = mass_value / liquid_volume if liquid_volume > 0 else 0
                             sl_results.append({
                                 "Phase": phase_name,
