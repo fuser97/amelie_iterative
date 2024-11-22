@@ -1308,7 +1308,15 @@ def literature():
                     updated_liquids = {}
 
                     st.markdown("##### Liquid Types")
+                    # Verifica che `liquids` sia un dizionario
+                    if isinstance(liquids, list):
+                        liquids = {f"Liquid {i + 1}": vol for i, vol in enumerate(liquids)}
+                    elif not isinstance(liquids, dict):
+                        liquids = {}
+
+                    # Iterazione sicura
                     for liquid_type, liquid_volume in liquids.items():
+
                         col1, col2, col3 = st.columns([2, 1, 1])
                         with col1:
                             new_liquid_type = st.text_input(
@@ -1362,7 +1370,15 @@ def literature():
 
                     # Iterazione su masse e liquidi
                     for mass_type, mass_value in masses.items():
+                        # Verifica che `liquids` sia un dizionario
+                        if isinstance(liquids, list):
+                            liquids = {f"Liquid {i + 1}": vol for i, vol in enumerate(liquids)}
+                        elif not isinstance(liquids, dict):
+                            liquids = {}
+
+                        # Iterazione sicura
                         for liquid_type, liquid_volume in liquids.items():
+
                             # Verifica che `liquid_volume` sia numerico
                             if not isinstance(liquid_volume, (int, float)):
                                 st.warning(
