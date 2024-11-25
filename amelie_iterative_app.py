@@ -146,9 +146,9 @@ def get_default_opex():
 
 def get_default_scenario():
     return {
-        "capex": get_default_capex(),  # Funzione per il CapEx di default
-        "opex": get_default_opex(),    # Funzione per l'OpEx di default
-        "energy_cost": 0.12,           # Default: 0.12 EUR/kWh
+        "capex": get_default_capex(),
+        "opex": get_default_opex(),
+        "energy_cost": 0.12,
         "energy_consumption": {
             "Leaching Reactor": 5,
             "Press Filter": 3,
@@ -161,13 +161,19 @@ def get_default_scenario():
             "1 Operator per Batch",
             "Process Includes: Pre-treatment, microwave thermal treatment, leaching in water, precipitation, secondary drying, leaching in acid, and wastewater treatment"
         ],
-        "technical_kpis": {  # Aggiunta dei KPI tecnici
-            "composition": {},  # Composizione del Black Mass (% per materiale)
-            "recovered_masses": {},  # Masse recuperate (kg per materiale)
-            "efficiency": 0.0,  # Efficienza complessiva (%)
-            "phases": {}  # Dati per le fasi (masses, liquids, solid/liquid ratios)
+        "technical_kpis": {
+            "composition": {
+                "Li": 7.0,  # Default percentages
+                "Co": 15.0,
+                "Ni": 10.0,
+                "Mn": 8.0
+            },
+            "recovered_masses": {},
+            "efficiency": 0.0,
+            "phases": {}
         }
     }
+
 
 
 # Initialize Model
@@ -226,17 +232,12 @@ if selected_scenario == "Create New Scenario":
     new_scenario_name = st.sidebar.text_input("New Scenario Name:")
     if st.sidebar.button("Create Scenario"):
         if new_scenario_name and new_scenario_name not in st.session_state.amelie_scenarios:
-            default_scenario = {
-                "capex": get_default_capex(),
-                "opex": get_default_opex(),
-                "energy_cost": 0.12,
-                "energy_consumption": {}
-            }
-            st.session_state.amelie_scenarios[new_scenario_name] = default_scenario
+            st.session_state.amelie_scenarios[new_scenario_name] = get_default_scenario()
             st.success(f"Scenario '{new_scenario_name}' created.")
             selected_scenario = new_scenario_name
         else:
             st.error("Invalid or duplicate scenario name!")
+
 
 # Pulsante per resettare la sessione
 if st.sidebar.button("Reset Session"):
@@ -696,6 +697,18 @@ def technical_kpis():
             "efficiency": 0.0,
             "phases": {}  # Per la sezione Solid/Liquid Ratios
         }
+
+    # Verifica e imposta valori di default per la composizione
+    if not current_scenario["technical_kpis"].get("composition"):
+        current_scenario["technical_kpis"]["composition"] = {
+            "Li": 7.0,
+            "Co": 15.0,
+            "Ni": 10.0,
+            "Mn": 8.0
+        }
+
+    # Resto del codice della funzione...
+
 
     # Sezione "Material Composition & Efficiency"
     if selected_section == "Material Composition & Efficiency":
