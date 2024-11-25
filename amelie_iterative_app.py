@@ -1696,8 +1696,13 @@ def benchmarking():
 
         ax.set_yticks([])
         ax.set_xticks(angles[:-1])
-        ax.set_xticklabels(["\n".join(f"{phase}\n({liquid})" for phase, liquid in phases_liquids)],
-                           fontsize=10)
+        # Crea etichette leggibili per ogni combinazione fase/liquido
+        labels = [f"{phase}\n({liquid})" for phase, liquid in phases_liquids]
+
+        # Imposta le etichette sui vertici del grafico a ragnatela
+        ax.set_xticks(angles[:-1])  # Gli angoli corrispondenti ai vertici
+        ax.set_xticklabels(labels, fontsize=10)
+
         ax.set_title("Mass/Volume Ratios by Phase and Liquid")
         ax.legend(loc="upper right", bbox_to_anchor=(1.3, 1))
         st.pyplot(fig)
