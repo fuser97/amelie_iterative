@@ -729,6 +729,13 @@ def technical_kpis():
     elif selected_section == "Efficiency Calculation":
         st.subheader("Recovered Mass and Efficiency Calculation")
 
+        # Recupera lo scenario selezionato
+        if selected_scenario not in st.session_state.amelie_scenarios:
+            st.session_state.amelie_scenarios[selected_scenario] = get_default_scenario()
+
+        # Ottieni i dati dello scenario corrente
+        current_scenario = st.session_state.amelie_scenarios[selected_scenario]
+
         # Inizializza la struttura per i Technical KPIs se non esiste
         if "technical_kpis" not in current_scenario:
             current_scenario["technical_kpis"] = {
@@ -829,6 +836,7 @@ def technical_kpis():
         # Persisti i dati su disco
         save_amelie_scenarios()
         st.success("Recovered Mass and Efficiency saved successfully!")
+
 
 
     # Solid/Liquid Ratios Section
