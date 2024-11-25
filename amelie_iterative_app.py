@@ -1550,6 +1550,20 @@ if len(compare_scenarios) > 1:
     comparison_df = pd.DataFrame(comparison_data)
     st.table(comparison_df)
 
+def initialize_session_state():
+    if "amelie_scenarios" not in st.session_state:
+        if os.path.exists("amelie_scenarios.json"):
+            try:
+                with open("amelie_scenarios.json", "r") as file:
+                    st.session_state.amelie_scenarios = json.load(file)
+            except json.JSONDecodeError:
+                st.warning("File 'amelie_scenarios.json' non valido. Uso del valore di default.")
+                st.session_state.amelie_scenarios = {"default": get_default_scenario()}
+        else:
+            st.session_state.amelie_scenarios = {"default": get_default_scenario()}
+
+# Richiama all'inizio dello script
+initialize_session_state()
 
 def benchmarking():
     st.title("Benchmarking: Unified Comparison Across Scenarios and Literature")
