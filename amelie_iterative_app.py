@@ -1632,7 +1632,14 @@ def benchmarking():
         # Rapporti massa/volume
         for phase_name, phase_data in phases.items():
             total_mass = sum(phase_data.get("masses", {}).values())
-            total_volume = sum(phase_data.get("liquids", {}).values())
+            liquids = phase_data.get("liquids", {})
+            if isinstance(liquids, dict):
+                total_volume = sum(liquids.values())
+            elif isinstance(liquids, list):
+                total_volume = sum(item.get("volume", 0) for item in liquids if isinstance(item, dict))
+            else:
+                total_volume = 0  # Fallback in caso di tipo non previsto
+
             overall_ratio = total_mass / total_volume if total_volume > 0 else 0
             mass_volume_ratios.append({
                 "Source": f"{source_type}: {source_name}",
