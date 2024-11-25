@@ -1711,7 +1711,9 @@ def benchmarking():
         st.markdown("#### Bar Chart for Mass/Volume Ratios")
         # Assicurati che "Source" sia una colonna e non un indice
         if "Source" not in pivot_df.columns:
-            pivot_df = pivot_df.reset_index()  # Trasforma l'indice in una colonna
+            st.error("Column 'Source' not found in the DataFrame. Please check the pivot table.")
+        else:
+            melted_df = pivot_df.melt(id_vars="Source", var_name="Phase & Liquid", value_name="S/L Ratio")
 
         # Esegui l'operazione melt
         melted_df = pivot_df.melt(id_vars="Source", var_name="Phase & Liquid", value_name="S/L Ratio")
