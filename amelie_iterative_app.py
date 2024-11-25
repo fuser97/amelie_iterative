@@ -1473,17 +1473,6 @@ def literature():
             save_case_studies()
 
 
-if page == "Economic KPIs":
-    economic_kpis()
-elif page == "Technical KPIs":
-    technical_kpis()
-elif page == "Literature":
-    literature()
-elif page == "Benchmarking":
-    benchmarking()
-
-
-
 st.sidebar.title("Compare Scenarios")
 compare_scenarios = st.sidebar.multiselect(
     "Select Scenarios to Compare:",
@@ -1639,3 +1628,18 @@ def benchmarking():
 
     if not benchmark_data and not detailed_efficiency and not mass_volume_ratios:
         st.warning("No data available for benchmarking. Please select scenarios or literature case studies.")
+
+
+if page == "Economic KPIs":
+    economic_kpis()
+elif page == "Technical KPIs":
+    technical_kpis()
+elif page == "Literature":
+    literature()
+elif page == "Benchmarking":
+    benchmarking()
+
+
+
+
+
