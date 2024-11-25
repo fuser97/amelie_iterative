@@ -160,7 +160,13 @@ def get_default_scenario():
             "Batch Size (10 kg)",
             "1 Operator per Batch",
             "Process Includes: Pre-treatment, microwave thermal treatment, leaching in water, precipitation, secondary drying, leaching in acid, and wastewater treatment"
-        ]
+        ],
+        "technical_kpis": {  # Aggiunta dei KPI tecnici
+            "composition": {},  # Composizione del Black Mass (% per materiale)
+            "recovered_masses": {},  # Masse recuperate (kg per materiale)
+            "efficiency": 0.0,  # Efficienza complessiva (%)
+            "phases": {}  # Dati per le fasi (masses, liquids, solid/liquid ratios)
+        }
     }
 
 
@@ -757,6 +763,17 @@ def technical_kpis():
             "Efficiency (%)": [efficiencies.get(m, 0.0) for m in st.session_state.composition.keys()]
         })
         st.table(result_df)
+        # Salva i dati aggiornati nello scenario corrente
+        current_scenario["technical_kpis"]["composition"] = st.session_state.composition
+        current_scenario["technical_kpis"]["recovered_masses"] = recovered_masses
+        current_scenario["technical_kpis"]["efficiency"] = overall_efficiency
+
+        # Aggiorna lo stato della sessione
+        st.session_state.amelie_scenarios[selected_scenario] = current_scenario
+
+        # Salva su disco
+        save_amelie_scenarios()
+        st.success("Technical KPIs saved successfully!")
 
     # Solid/Liquid Ratios Section
     elif selected_section == "Solid/Liquid Ratios":
@@ -831,7 +848,15 @@ def technical_kpis():
         sl_df = pd.DataFrame(sl_results)
         st.table(sl_df)
 
+        # Salva i dati aggiornati nello scenario corrente
+        current_scenario["technical_kpis"]["phases"] = st.session_state.phases
 
+        # Aggiorna lo stato della sessione
+        st.session_state.amelie_scenarios[selected_scenario] = current_scenario
+
+        # Salva su disco
+        save_amelie_scenarios()
+        st.success("Solid/Liquid Ratios saved successfully!")
 
 
 def save_case_studies():
