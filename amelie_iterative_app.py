@@ -1495,36 +1495,64 @@ if len(compare_scenarios) > 1:
 def benchmarking():
     st.title("Benchmarking: Unified Comparison Across Scenarios and Literature")
 
-    # Selezione degli scenari e degli studi di letteratura
+    # Selezione delle fonti (scenari e letteratura)
     selected_scenarios = st.multiselect(
         "Select Scenarios to Compare:",
         list(st.session_state.amelie_scenarios.keys()),
         default=["default"],
         key="benchmarking_scenarios"
     )
-
     selected_case_studies = st.multiselect(
         "Select Literature Case Studies to Compare:",
         list(st.session_state.case_studies.keys()),
         key="benchmarking_case_studies"
     )
 
+    # Unifica scenari e letteratura in un'unica lista
+    sources = []
+
+    # Aggiungi gli scenari
+    for scenario_name in selected_scenarios:
+        scenario_data = st.session_state.amelie_scenarios.get(scenario_name, {})
+        sources.append({
+            "name": scenario_name,
+            "type": "Scenario",
+            "data": scenario_data
+        })
+
+    # Aggiungi i casi di letteratura
+    for case_study_name in selected_case_studies:
+        case_study_data = st.session_state.case_studies.get(case_study_name, {})
+        sources.append({
+            "name": case_study_name,
+            "type": "Literature",
+            "data": case_study_data
+        })
+
     # Aggregazione dei dati
-    all_data = []  # Per combinare scenari e letteratura
+    all_data = []  # Per combinare KPI economici
     material_efficiency_data = []  # Per efficienza per materiale
     mass_volume_ratios = []  # Per rapporto massa/volume
-    missing_data = []  # Per segnalare fonti con dati mancanti
+    missing_data = []  # Per fonti con dati mancanti
 
-    # Funzione per unire i dati
-    def aggregate_data(source_type, source_name, source_data):
-        technical_kpis = source_data.get("technical_kpis", {})
-        efficiency_per_material = technical_kpis.get("efficiency_per_material", {})
-        phases = technical_kpis.get("phases", {})
+    # Funzione per elaborare una fonte
+    def process_source(source):
+        source_name = source["name"]
+        source_type = source["type"]
+        source_data = source["data"]
 
-        # Controllo presenza dati
-        if not technical_kpis and source_type == "Scenario":
-            st.warning(f"No technical KPI data for {source_type}: {source_name}. Skipping.")
-            return
+        # Aggiungi valori di default
+        source_data.setdefault("capex", {})
+        source_data.setdefault("opex", {})
+        source_data.setdefault("energy_cost", 0.12)
+        source_data.setdefault("technical_kpis", {})
+        source_data["technical_kpis"].setdefault("efficiency_per_material", {})
+        source_data["technical_kpis"].setdefault("phases", {})
+        source_data["technical_kpis"].setdefault("efficiency", 0)
+
+        technical_kpis = source_data["technical_kpis"]
+        efficiency_per_material = technical_kpis["efficiency_per_material"]
+        phases = technical_kpis["phases"]
 
         # Dati principali
         all_data.append({
@@ -1556,17 +1584,9 @@ def benchmarking():
                 "Mass/Volume Ratio": overall_ratio,
             })
 
-    # Unisce i dati degli scenari
-    for scenario_name in selected_scenarios:
-        aggregate_data("Scenario", scenario_name, st.session_state.amelie_scenarios.get(scenario_name, {}))
-
-    # Unisce i dati della letteratura
-    for case_study_name in selected_case_studies:
-        aggregate_data("Literature", case_study_name, st.session_state.case_studies.get(case_study_name, {}))
-
-    # Avviso per dati mancanti
-    if missing_data:
-        st.warning(f"Some sources are missing data: {', '.join(missing_data)}")
+    # Processa tutte le fonti
+    for source in sources:
+        process_source(source)
 
     # Tabella unificata per KPI principali
     st.markdown("### Unified Table of Main KPIs")
