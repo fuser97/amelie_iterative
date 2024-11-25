@@ -1603,7 +1603,6 @@ def benchmarking():
         # Aggiungi valori di default
         source_data.setdefault("capex", {})
         source_data.setdefault("opex", {})
-        source_data.setdefault("energy_cost", 0.12)
         source_data.setdefault("technical_kpis", {})
         source_data["technical_kpis"].setdefault("efficiency_per_material", {})
         source_data["technical_kpis"].setdefault("phases", {})
@@ -1616,7 +1615,6 @@ def benchmarking():
         # Dati principali
         all_data.append({
             "Source": f"{source_type}: {source_name}",
-            "Energy Cost (EUR/kWh)": source_data.get("energy_cost", 0),
             "Total CapEx (EUR)": sum(source_data.get("capex", {}).values()),
             "Total OpEx (EUR)": sum(source_data.get("opex", {}).values()),
             "Overall Efficiency (%)": technical_kpis.get("efficiency", 0),
@@ -1661,7 +1659,7 @@ def benchmarking():
         st.dataframe(main_kpis_df)
 
         # Grafici comparativi per KPI principali
-        for metric in ["Total CapEx (EUR)", "Total OpEx (EUR)", "Energy Cost (EUR/kWh)", "Overall Efficiency (%)"]:
+        for metric in ["Total CapEx (EUR)", "Total OpEx (EUR)", "Overall Efficiency (%)"]:
             fig, ax = plt.subplots(figsize=(12, 6))
             main_kpis_df.plot.bar(x="Source", y=metric, ax=ax)
             ax.set_title(f"{metric} Comparison")
