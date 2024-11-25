@@ -1522,8 +1522,8 @@ def benchmarking():
         phases = technical_kpis.get("phases", {})
 
         # Controllo presenza dati
-        if not technical_kpis:
-            missing_data.append(f"{source_type}: {source_name}")
+        if not technical_kpis and source_type == "Scenario":
+            st.warning(f"No technical KPI data for {source_type}: {source_name}. Skipping.")
             return
 
         # Dati principali
