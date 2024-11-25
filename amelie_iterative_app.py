@@ -1550,20 +1550,6 @@ if len(compare_scenarios) > 1:
     comparison_df = pd.DataFrame(comparison_data)
     st.table(comparison_df)
 
-def initialize_session_state():
-    if "amelie_scenarios" not in st.session_state:
-        if os.path.exists("amelie_scenarios.json"):
-            try:
-                with open("amelie_scenarios.json", "r") as file:
-                    st.session_state.amelie_scenarios = json.load(file)
-            except json.JSONDecodeError:
-                st.warning("File 'amelie_scenarios.json' non valido. Uso del valore di default.")
-                st.session_state.amelie_scenarios = {"default": get_default_scenario()}
-        else:
-            st.session_state.amelie_scenarios = {"default": get_default_scenario()}
-
-# Richiama all'inizio dello script
-initialize_session_state()
 
 def benchmarking():
     st.title("Benchmarking: Unified Comparison Across Scenarios and Literature")
@@ -1663,86 +1649,102 @@ def benchmarking():
                 "S/L Ratio": overall_ratio,
             })
 
-            # Processa tutte le fonti
-            for source in sources:
-                process_source(source)
+    # Processa tutte le fonti
+    for source in sources:
+        process_source(source)
 
-            # Dopo aver processato le fonti, crea il DataFrame con i dati aggregati
-            if mass_volume_ratios:
-                # Pivot per organizzare i dati
-                pivot_df = mass_volume_df.pivot(
-                    index="Source",
-                    columns=["Phase", "Liquid Type"],
-                    values="S/L Ratio"
-                ).fillna(0)  # Riempie i valori mancanti con 0
+    # Dopo aver processato le fonti, crea il DataFrame con i dati aggregati
+    if mass_volume_ratios:
+        # Converte i dati in DataFrame
+        pivot_df = pd.DataFrame(mass_volume_ratios)
 
-                st.markdown("### Pivot Table for Mass/Volume Ratios")
-                st.dataframe(pivot_df)
+        # Verifica che la colonna "Source" sia presente e utilizza set_index per organizzarla
+        if "Source" not in pivot_df.columns:
+            raise KeyError("La colonna 'Source' non è presente nei dati aggregati.")
 
-                # Visualizzazione Grafica
-                st.markdown("### Graphical Representation of Mass/Volume Ratios")
+        pivot_df = pivot_df.set_index("Source")  # Imposta 'Source' come indice
+        st.markdown("### Pivot Table for Mass/Volume Ratios")
+        st.dataframe(pivot_df)
+    else:
+        st.warning("No mass/volume ratio data available for comparison.")
 
-                # Opzione 1: Grafico a Ragnatela
-                st.markdown("#### Radar Chart (Spider Plot) for Phases and Liquids")
-                fig, ax = plt.subplots(figsize=(8, 8), subplot_kw=dict(polar=True))
+        # Identifica tutte le combinazioni uniche di fasi e liquidi per garantire uniformità
+        unique_phases_liquids = mass_volume_df[["Phase", "Liquid Type"]].drop_duplicates()
 
-                # Preparazione degli angoli per il grafico radar
-                phases_liquids = pivot_df.columns
-                num_vars = len(phases_liquids)
-                angles = np.linspace(0, 2 * np.pi, num_vars, endpoint=False).tolist()
-                angles += angles[:1]  # Chiudi il cerchio
+        # Pivot per organizzare i dati
+        pivot_df = mass_volume_df.pivot(
+            index="Source",
+            columns=["Phase", "Liquid Type"],
+            values="S/L Ratio"
+        ).fillna(0)  # Riempie i valori mancanti con 0
 
-                # Traccia ogni scenario
-                for source, values in pivot_df.iterrows():
-                    data = values.tolist()
-                    data += data[:1]  # Chiudi il cerchio
-                    ax.plot(angles, data, label=source, linewidth=2)
-                    ax.fill(angles, data, alpha=0.25)
+        st.markdown("### Pivot Table for Mass/Volume Ratios")
+        st.dataframe(pivot_df)
 
-                ax.set_yticks([])
-                ax.set_xticks(angles[:-1])
-                # Crea etichette leggibili per ogni combinazione fase/liquido
-                labels = [f"{phase}\n({liquid})" for phase, liquid in phases_liquids]
+        # Visualizzazione Grafica
+        st.markdown("### Graphical Representation of Mass/Volume Ratios")
 
-                # Imposta le etichette sui vertici del grafico a ragnatela
-                ax.set_xticks(angles[:-1])  # Gli angoli corrispondenti ai vertici
-                ax.set_xticklabels(labels, fontsize=10)
+        # Opzione 1: Grafico a Ragnatela
+        st.markdown("#### Radar Chart (Spider Plot) for Phases and Liquids")
+        fig, ax = plt.subplots(figsize=(8, 8), subplot_kw=dict(polar=True))
 
-                ax.set_title("Mass/Volume Ratios by Phase and Liquid")
-                ax.legend(loc="upper right", bbox_to_anchor=(1.3, 1))
-                st.pyplot(fig)
+        # Preparazione degli angoli per il grafico radar
+        phases_liquids = pivot_df.columns
+        num_vars = len(phases_liquids)
+        angles = np.linspace(0, 2 * np.pi, num_vars, endpoint=False).tolist()
+        angles += angles[:1]  # Chiudi il cerchio
 
-                # Opzione 2: Grafico a Barre
-                st.markdown("#### Bar Chart for Mass/Volume Ratios")
-                # Assicurati che 'Source' sia una colonna
-                if "Source" not in pivot_df.columns:
-                    pivot_df = pivot_df.reset_index()  # Trasforma l'indice in colonna
+        # Traccia ogni scenario
+        for source, values in pivot_df.iterrows():
+            data = values.tolist()
+            data += data[:1]  # Chiudi il cerchio
+            ax.plot(angles, data, label=source, linewidth=2)
+            ax.fill(angles, data, alpha=0.25)
 
-                # Verifica che tutte le colonne necessarie siano presenti
-                required_columns = ["Source"]
-                missing_columns = [col for col in required_columns if col not in pivot_df.columns]
-                if missing_columns:
-                    raise ValueError(f"Missing required columns in DataFrame: {missing_columns}")
+        ax.set_yticks([])
+        ax.set_xticks(angles[:-1])
+        # Crea etichette leggibili per ogni combinazione fase/liquido
+        labels = [f"{phase}\n({liquid})" for phase, liquid in phases_liquids]
 
-                # Esegui l'operazione melt
-                melted_df = pivot_df.melt(id_vars="Source", var_name="Phase & Liquid", value_name="S/L Ratio")
+        # Imposta le etichette sui vertici del grafico a ragnatela
+        ax.set_xticks(angles[:-1])  # Gli angoli corrispondenti ai vertici
+        ax.set_xticklabels(labels, fontsize=10)
 
-                fig, ax = plt.subplots(figsize=(12, 6))
-                for phase_liquid in melted_df["Phase & Liquid"].unique():
-                    phase_liquid_data = melted_df[melted_df["Phase & Liquid"] == phase_liquid]
-                    ax.bar(
-                        phase_liquid_data["Source"],
-                        phase_liquid_data["S/L Ratio"],
-                        label=phase_liquid,
-                        alpha=0.7
-                    )
-                ax.set_title("Mass/Volume Ratio Comparison")
-                ax.set_ylabel("S/L Ratio")
-                ax.set_xticklabels(pivot_df.index, rotation=45, ha="right")
-                ax.legend(title="Phase & Liquid", bbox_to_anchor=(1.05, 1), loc="upper left")
-                st.pyplot(fig)
-            else:
-                st.warning("No mass/volume ratio data available for comparison.")
+        ax.set_title("Mass/Volume Ratios by Phase and Liquid")
+        ax.legend(loc="upper right", bbox_to_anchor=(1.3, 1))
+        st.pyplot(fig)
+
+        # Opzione 2: Grafico a Barre
+        st.markdown("#### Bar Chart for Mass/Volume Ratios")
+        # Assicurati che 'Source' sia una colonna
+        if "Source" not in pivot_df.columns:
+            pivot_df = pivot_df.reset_index()  # Trasforma l'indice in colonna
+
+        # Verifica che tutte le colonne necessarie siano presenti
+        required_columns = ["Source"]
+        missing_columns = [col for col in required_columns if col not in pivot_df.columns]
+        if missing_columns:
+            raise ValueError(f"Missing required columns in DataFrame: {missing_columns}")
+
+        # Esegui l'operazione melt
+        melted_df = pivot_df.melt(id_vars="Source", var_name="Phase & Liquid", value_name="S/L Ratio")
+
+        fig, ax = plt.subplots(figsize=(12, 6))
+        for phase_liquid in melted_df["Phase & Liquid"].unique():
+            phase_liquid_data = melted_df[melted_df["Phase & Liquid"] == phase_liquid]
+            ax.bar(
+                phase_liquid_data["Source"],
+                phase_liquid_data["S/L Ratio"],
+                label=phase_liquid,
+                alpha=0.7
+            )
+        ax.set_title("Mass/Volume Ratio Comparison")
+        ax.set_ylabel("S/L Ratio")
+        ax.set_xticklabels(pivot_df.index, rotation=45, ha="right")
+        ax.legend(title="Phase & Liquid", bbox_to_anchor=(1.05, 1), loc="upper left")
+        st.pyplot(fig)
+    else:
+        st.warning("No mass/volume ratio data available for comparison.")
 
 
 if page == "Economic KPIs":
