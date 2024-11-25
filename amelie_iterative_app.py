@@ -1499,13 +1499,14 @@ def benchmarking():
     selected_scenarios = st.multiselect(
         "Select Scenarios to Compare:",
         list(st.session_state.amelie_scenarios.keys()),
-        default=["default"]
+        default=["default"],
+        key="benchmarking_scenarios"
     )
 
-    # Selezione degli studi della letteratura da includere nel confronto
     selected_case_studies = st.multiselect(
         "Select Literature Case Studies to Compare:",
-        list(st.session_state.case_studies.keys())
+        list(st.session_state.case_studies.keys()),
+        key="benchmarking_case_studies"
     )
 
     # Aggregazione dei dati
