@@ -1709,7 +1709,13 @@ def benchmarking():
 
         # Opzione 2: Grafico a Barre
         st.markdown("#### Bar Chart for Mass/Volume Ratios")
-        melted_df = pivot_df.reset_index().melt(id_vars="Source", var_name="Phase & Liquid", value_name="S/L Ratio")
+        # Assicurati che "Source" sia una colonna e non un indice
+        if "Source" not in pivot_df.columns:
+            pivot_df = pivot_df.reset_index()  # Trasforma l'indice in una colonna
+
+        # Esegui l'operazione melt
+        melted_df = pivot_df.melt(id_vars="Source", var_name="Phase & Liquid", value_name="S/L Ratio")
+
         fig, ax = plt.subplots(figsize=(12, 6))
         for phase_liquid in melted_df["Phase & Liquid"].unique():
             phase_liquid_data = melted_df[melted_df["Phase & Liquid"] == phase_liquid]
