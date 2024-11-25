@@ -8,6 +8,7 @@ import io
 
 import json
 import os
+import numpy as np
 
 
 # Path to the JSON file
