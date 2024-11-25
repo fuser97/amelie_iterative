@@ -1653,13 +1653,20 @@ def benchmarking():
     for source in sources:
         process_source(source)
 
-    # Visualizzazione dei rapporti massa/volume
-    st.markdown("### Comparison of Mass/Volume Ratios")
-
+    # Dopo aver processato le fonti, crea il DataFrame con i dati aggregati
     if mass_volume_ratios:
-        # Converte i dati in DataFrame per il confronto
-        mass_volume_df = pd.DataFrame(mass_volume_ratios)
-        st.dataframe(mass_volume_df)
+        # Converte i dati in DataFrame
+        pivot_df = pd.DataFrame(mass_volume_ratios)
+
+        # Verifica che la colonna "Source" sia presente e utilizza set_index per organizzarla
+        if "Source" not in pivot_df.columns:
+            raise KeyError("La colonna 'Source' non è presente nei dati aggregati.")
+
+        pivot_df = pivot_df.set_index("Source")  # Imposta 'Source' come indice
+        st.markdown("### Pivot Table for Mass/Volume Ratios")
+        st.dataframe(pivot_df)
+    else:
+        st.warning("No mass/volume ratio data available for comparison.")
 
         # Identifica tutte le combinazioni uniche di fasi e liquidi per garantire uniformità
         unique_phases_liquids = mass_volume_df[["Phase", "Liquid Type"]].drop_duplicates()
