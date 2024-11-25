@@ -1493,7 +1493,7 @@ if len(compare_scenarios) > 1:
 
 
 def benchmarking():
-    st.title("Benchmarking: Compare All KPIs Across Scenarios and Literature")
+    st.title("Benchmarking: Unified Comparison Across Scenarios and Literature")
 
     # Selezione degli scenari e degli studi di letteratura
     selected_scenarios = st.multiselect(
@@ -1510,143 +1510,82 @@ def benchmarking():
     )
 
     # Aggregazione dei dati
-    economic_data = []  # Per i KPI economici
-    technical_data = []  # Per efficienza complessiva
+    all_data = []  # Per combinare scenari e letteratura
     material_efficiency_data = []  # Per efficienza per materiale
     mass_volume_ratios = []  # Per rapporto massa/volume
-    missing_data = []  # Per segnalare scenari o studi con dati mancanti
+    missing_data = []  # Per segnalare fonti con dati mancanti
 
-    # Estrazione dati da scenari
+    # Funzione per unire i dati
+    def aggregate_data(source_type, source_name, source_data):
+        technical_kpis = source_data.get("technical_kpis", {})
+        efficiency_per_material = technical_kpis.get("efficiency_per_material", {})
+        phases = technical_kpis.get("phases", {})
+
+        # Controllo presenza dati
+        if not technical_kpis:
+            missing_data.append(f"{source_type}: {source_name}")
+            return
+
+        # Dati principali
+        all_data.append({
+            "Source": f"{source_type}: {source_name}",
+            "Energy Cost (EUR/kWh)": source_data.get("energy_cost", 0),
+            "Total CapEx (EUR)": sum(source_data.get("capex", {}).values()),
+            "Total OpEx (EUR)": sum(source_data.get("opex", {}).values()),
+            "Overall Efficiency (%)": technical_kpis.get("efficiency", 0),
+        })
+
+        # Efficienza per materiale
+        for material, efficiency in efficiency_per_material.items():
+            material_efficiency_data.append({
+                "Source": f"{source_type}: {source_name}",
+                "Material": material,
+                "Efficiency (%)": efficiency,
+            })
+
+        # Rapporti massa/volume
+        for phase_name, phase_data in phases.items():
+            total_mass = sum(phase_data.get("masses", {}).values())
+            total_volume = sum(phase_data.get("liquids", {}).values())
+            overall_ratio = total_mass / total_volume if total_volume > 0 else 0
+            mass_volume_ratios.append({
+                "Source": f"{source_type}: {source_name}",
+                "Phase": phase_name,
+                "Total Mass (kg)": total_mass,
+                "Total Volume (L)": total_volume,
+                "Mass/Volume Ratio": overall_ratio,
+            })
+
+    # Unisce i dati degli scenari
     for scenario_name in selected_scenarios:
-        scenario = st.session_state.amelie_scenarios.get(scenario_name, {})
-        technical_kpis = scenario.get("technical_kpis", {})
-        efficiency_per_material = technical_kpis.get("efficiency_per_material", {})
-        phases = technical_kpis.get("phases", {})
+        aggregate_data("Scenario", scenario_name, st.session_state.amelie_scenarios.get(scenario_name, {}))
 
-        # Controllo presenza dati
-        if not technical_kpis:
-            missing_data.append(f"Scenario: {scenario_name}")
-            continue
-
-        # Dati economici
-        economic_data.append({
-            "Source": f"Scenario: {scenario_name}",
-            "Energy Cost (EUR/kWh)": scenario.get("energy_cost", 0),
-            "Total CapEx (EUR)": sum(scenario.get("capex", {}).values()),
-            "Total OpEx (EUR)": sum(scenario.get("opex", {}).values()),
-        })
-
-        # Efficienza complessiva
-        technical_data.append({
-            "Source": f"Scenario: {scenario_name}",
-            "Overall Efficiency (%)": technical_kpis.get("efficiency", 0),
-        })
-
-        # Efficienza per materiale
-        for material, efficiency in efficiency_per_material.items():
-            material_efficiency_data.append({
-                "Source": f"Scenario: {scenario_name}",
-                "Material": material,
-                "Efficiency (%)": efficiency,
-            })
-
-        # Rapporti massa/volume
-        for phase_name, phase_data in phases.items():
-            total_mass = sum(phase_data.get("masses", {}).values())
-            total_volume = sum(phase_data.get("liquids", {}).values())
-            overall_ratio = total_mass / total_volume if total_volume > 0 else 0
-            mass_volume_ratios.append({
-                "Source": f"Scenario: {scenario_name}",
-                "Phase": phase_name,
-                "Total Mass (kg)": total_mass,
-                "Total Volume (L)": total_volume,
-                "Mass/Volume Ratio": overall_ratio,
-            })
-
-    # Estrazione dati da studi di letteratura
+    # Unisce i dati della letteratura
     for case_study_name in selected_case_studies:
-        case_study = st.session_state.case_studies.get(case_study_name, {})
-        technical_kpis = case_study.get("technical_kpis", {})
-        efficiency_per_material = technical_kpis.get("efficiency_per_material", {})
-        phases = technical_kpis.get("phases", {})
-
-        # Controllo presenza dati
-        if not technical_kpis:
-            missing_data.append(f"Literature: {case_study_name}")
-            continue
-
-        # Dati economici
-        economic_data.append({
-            "Source": f"Literature: {case_study_name}",
-            "Energy Cost (EUR/kWh)": case_study.get("energy_cost", 0),
-            "Total CapEx (EUR)": sum(case_study.get("capex", {}).values()),
-            "Total OpEx (EUR)": sum(case_study.get("opex", {}).values()),
-        })
-
-        # Efficienza complessiva
-        technical_data.append({
-            "Source": f"Literature: {case_study_name}",
-            "Overall Efficiency (%)": technical_kpis.get("efficiency", 0),
-        })
-
-        # Efficienza per materiale
-        for material, efficiency in efficiency_per_material.items():
-            material_efficiency_data.append({
-                "Source": f"Literature: {case_study_name}",
-                "Material": material,
-                "Efficiency (%)": efficiency,
-            })
-
-        # Rapporti massa/volume
-        for phase_name, phase_data in phases.items():
-            total_mass = sum(phase_data.get("masses", {}).values())
-            total_volume = sum(phase_data.get("liquids", {}).values())
-            overall_ratio = total_mass / total_volume if total_volume > 0 else 0
-            mass_volume_ratios.append({
-                "Source": f"Literature: {case_study_name}",
-                "Phase": phase_name,
-                "Total Mass (kg)": total_mass,
-                "Total Volume (L)": total_volume,
-                "Mass/Volume Ratio": overall_ratio,
-            })
+        aggregate_data("Literature", case_study_name, st.session_state.case_studies.get(case_study_name, {}))
 
     # Avviso per dati mancanti
     if missing_data:
-        st.warning(f"Some sources are missing technical KPI data: {', '.join(missing_data)}")
+        st.warning(f"Some sources are missing data: {', '.join(missing_data)}")
 
-    # KPI Economici
-    st.markdown("### Economic KPI Comparison")
-    if economic_data:
-        economic_df = pd.DataFrame(economic_data)
-        st.dataframe(economic_df)
+    # Tabella unificata per KPI principali
+    st.markdown("### Unified Table of Main KPIs")
+    if all_data:
+        main_kpis_df = pd.DataFrame(all_data)
+        st.dataframe(main_kpis_df)
 
-        # Grafici comparativi per KPI economici
-        for metric in ["Total CapEx (EUR)", "Total OpEx (EUR)", "Energy Cost (EUR/kWh)"]:
-            fig, ax = plt.subplots(figsize=(10, 6))
-            economic_df.plot.bar(x="Source", y=metric, ax=ax)
+        # Grafici comparativi per KPI principali
+        for metric in ["Total CapEx (EUR)", "Total OpEx (EUR)", "Energy Cost (EUR/kWh)", "Overall Efficiency (%)"]:
+            fig, ax = plt.subplots(figsize=(12, 6))
+            main_kpis_df.plot.bar(x="Source", y=metric, ax=ax)
             ax.set_title(f"{metric} Comparison")
             ax.set_ylabel(metric)
             st.pyplot(fig)
     else:
-        st.warning("No economic data available for comparison.")
+        st.warning("No main KPI data available for comparison.")
 
-    # KPI Tecnici (Efficienza Complessiva)
-    st.markdown("### Technical KPI Comparison: Overall Efficiency")
-    if technical_data:
-        technical_df = pd.DataFrame(technical_data)
-        st.dataframe(technical_df)
-
-        # Grafico comparativo per efficienza complessiva
-        fig, ax = plt.subplots(figsize=(10, 6))
-        technical_df.plot.bar(x="Source", y="Overall Efficiency (%)", ax=ax, color="orange")
-        ax.set_title("Overall Efficiency Comparison")
-        ax.set_ylabel("Efficiency (%)")
-        st.pyplot(fig)
-    else:
-        st.warning("No technical data available for overall efficiency comparison.")
-
-    # Efficienza per materiale
-    st.markdown("### Technical KPI Comparison: Material Efficiency")
+    # Tabella unificata per efficienza per materiale
+    st.markdown("### Unified Table of Material Efficiency")
     if material_efficiency_data:
         material_efficiency_df = pd.DataFrame(material_efficiency_data)
         st.dataframe(material_efficiency_df)
@@ -1663,8 +1602,8 @@ def benchmarking():
     else:
         st.warning("No material efficiency data available for comparison.")
 
-    # Rapporti Massa/Volume
-    st.markdown("### Technical KPI Comparison: Mass/Volume Ratios")
+    # Tabella unificata per rapporto massa/volume
+    st.markdown("### Unified Table of Mass/Volume Ratios")
     if mass_volume_ratios:
         mass_volume_df = pd.DataFrame(mass_volume_ratios)
         st.dataframe(mass_volume_df)
