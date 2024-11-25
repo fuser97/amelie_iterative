@@ -1653,58 +1653,71 @@ def benchmarking():
     for source in sources:
         process_source(source)
 
-    # Tabella unificata per KPI principali
-    st.markdown("### Unified Table of Main KPIs")
-    if all_data:
-        main_kpis_df = pd.DataFrame(all_data)
-        st.dataframe(main_kpis_df)
-
-        # Grafici comparativi per KPI principali
-        for metric in ["Total CapEx (EUR)", "Total OpEx (EUR)", "Overall Efficiency (%)"]:
-            fig, ax = plt.subplots(figsize=(12, 6))
-            main_kpis_df.plot.bar(x="Source", y=metric, ax=ax)
-            ax.set_title(f"{metric} Comparison")
-            ax.set_ylabel(metric)
-            st.pyplot(fig)
-    else:
-        st.warning("No main KPI data available for comparison.")
-
-    # Tabella unificata per efficienza per materiale
-    st.markdown("### Unified Table of Material Efficiency")
-    if material_efficiency_data:
-        material_efficiency_df = pd.DataFrame(material_efficiency_data)
-        st.dataframe(material_efficiency_df)
-
-        # Grafico comparativo per efficienza materiale
-        fig, ax = plt.subplots(figsize=(12, 6))
-        for material in material_efficiency_df["Material"].unique():
-            material_data = material_efficiency_df[material_efficiency_df["Material"] == material]
-            ax.bar(material_data["Source"], material_data["Efficiency (%)"], label=material)
-        ax.set_title("Material Efficiency Comparison")
-        ax.set_ylabel("Efficiency (%)")
-        ax.legend(title="Material")
-        st.pyplot(fig)
-    else:
-        st.warning("No material efficiency data available for comparison.")
-
+    # Visualizzazione dei rapporti massa/volume
     st.markdown("### Comparison of Mass/Volume Ratios")
+
     if mass_volume_ratios:
+        # Converte i dati in DataFrame per il confronto
         mass_volume_df = pd.DataFrame(mass_volume_ratios)
         st.dataframe(mass_volume_df)
 
-        # Grafico per confrontare i rapporti massa/volume
+        # Identifica tutte le combinazioni uniche di fasi e liquidi per garantire uniformità
+        unique_phases_liquids = mass_volume_df[["Phase", "Liquid Type"]].drop_duplicates()
+
+        # Pivot per organizzare i dati
+        pivot_df = mass_volume_df.pivot(
+            index="Source",
+            columns=["Phase", "Liquid Type"],
+            values="S/L Ratio"
+        ).fillna(0)  # Riempie i valori mancanti con 0
+
+        st.markdown("### Pivot Table for Mass/Volume Ratios")
+        st.dataframe(pivot_df)
+
+        # Visualizzazione Grafica
+        st.markdown("### Graphical Representation of Mass/Volume Ratios")
+
+        # Opzione 1: Grafico a Ragnatela
+        st.markdown("#### Radar Chart (Spider Plot) for Phases and Liquids")
+        fig, ax = plt.subplots(figsize=(8, 8), subplot_kw=dict(polar=True))
+
+        # Preparazione degli angoli per il grafico radar
+        phases_liquids = pivot_df.columns
+        num_vars = len(phases_liquids)
+        angles = np.linspace(0, 2 * np.pi, num_vars, endpoint=False).tolist()
+        angles += angles[:1]  # Chiudi il cerchio
+
+        # Traccia ogni scenario
+        for source, values in pivot_df.iterrows():
+            data = values.tolist()
+            data += data[:1]  # Chiudi il cerchio
+            ax.plot(angles, data, label=source, linewidth=2)
+            ax.fill(angles, data, alpha=0.25)
+
+        ax.set_yticks([])
+        ax.set_xticks(angles[:-1])
+        ax.set_xticklabels(["\n".join(f"{phase}\n({liquid})" for phase, liquid in phases_liquids)],
+                           fontsize=10)
+        ax.set_title("Mass/Volume Ratios by Phase and Liquid")
+        ax.legend(loc="upper right", bbox_to_anchor=(1.3, 1))
+        st.pyplot(fig)
+
+        # Opzione 2: Grafico a Barre
+        st.markdown("#### Bar Chart for Mass/Volume Ratios")
+        melted_df = pivot_df.reset_index().melt(id_vars="Source", var_name="Phase & Liquid", value_name="S/L Ratio")
         fig, ax = plt.subplots(figsize=(12, 6))
-        for phase in mass_volume_df["Phase"].unique():
-            phase_data = mass_volume_df[mass_volume_df["Phase"] == phase]
-            ax.plot(
-                phase_data["Source"],
-                phase_data["S/L Ratio"],
-                marker='o',
-                label=f"Phase: {phase}"
+        for phase_liquid in melted_df["Phase & Liquid"].unique():
+            phase_liquid_data = melted_df[melted_df["Phase & Liquid"] == phase_liquid]
+            ax.bar(
+                phase_liquid_data["Source"],
+                phase_liquid_data["S/L Ratio"],
+                label=phase_liquid,
+                alpha=0.7
             )
         ax.set_title("Mass/Volume Ratio Comparison")
         ax.set_ylabel("S/L Ratio")
-        ax.legend(title="Phases", bbox_to_anchor=(1.05, 1), loc='upper left')
+        ax.set_xticklabels(pivot_df.index, rotation=45, ha="right")
+        ax.legend(title="Phase & Liquid", bbox_to_anchor=(1.05, 1), loc="upper left")
         st.pyplot(fig)
     else:
         st.warning("No mass/volume ratio data available for comparison.")
