@@ -670,7 +670,11 @@ import streamlit as st
 
 
 def technical_kpis():
-    st.title("Technical KPIs: Material Management and Efficiency")
+    st.title("Technical KPIs")
+
+    # Dropdown per selezionare la sezione
+    sections = ["Material Composition & Efficiency", "Solid/Liquid Ratios"]
+    selected_section = st.selectbox("Select Section:", sections)
 
     # Recupera lo scenario selezionato
     if selected_scenario not in st.session_state.amelie_scenarios:
@@ -689,103 +693,107 @@ def technical_kpis():
                 "Mn": 8.0
             },
             "recovered_masses": {},
-            "efficiency": 0.0
+            "efficiency": 0.0,
+            "phases": {}  # Per la sezione Solid/Liquid Ratios
         }
 
-    # Recupera composizione e masse recuperate dallo scenario corrente
-    composition = current_scenario["technical_kpis"].get("composition", {})
-    recovered_masses = current_scenario["technical_kpis"].get("recovered_masses", {})
+    # Sezione "Material Composition & Efficiency"
+    if selected_section == "Material Composition & Efficiency":
+        st.subheader("Material Composition & Efficiency")
+        composition = current_scenario["technical_kpis"].get("composition", {})
+        recovered_masses = current_scenario["technical_kpis"].get("recovered_masses", {})
 
-    # Display Composition e modifiche
-    st.subheader("Material Composition in Black Mass")
-    total_percentage = 0
-    updated_composition = {}
+        total_percentage = 0
+        updated_composition = {}
 
-    for material, percentage in list(composition.items()):
-        col1, col2, col3 = st.columns([2, 1, 1])
-        with col1:
-            new_material = st.text_input(
-                f"Material ({material}):", value=material,
-                key=f"edit_material_{selected_scenario}_{material}"
-            )
-        with col2:
-            new_percentage = st.number_input(
-                f"Percentage of {material} in BM (%)", min_value=0.0, max_value=100.0,
-                value=percentage, key=f"edit_percentage_{selected_scenario}_{material}"
-            )
-        with col3:
-            if st.button(f"Remove {material}", key=f"remove_material_{selected_scenario}_{material}"):
-                continue
+        for material, percentage in list(composition.items()):
+            col1, col2, col3, col4 = st.columns([2, 1, 1, 1])
+            with col1:
+                new_material = st.text_input(
+                    f"Material ({material}):", value=material,
+                    key=f"edit_material_{selected_scenario}_{material}"
+                )
+            with col2:
+                new_percentage = st.number_input(
+                    f"Percentage of {material} in BM (%)", min_value=0.0, max_value=100.0,
+                    value=percentage, key=f"edit_percentage_{selected_scenario}_{material}"
+                )
+            with col3:
+                recovered_mass = st.number_input(
+                    f"Recovered Mass of {material} (kg):",
+                    min_value=0.0, value=recovered_masses.get(material, 0.0),
+                    key=f"recovered_mass_{selected_scenario}_{material}"
+                )
+                recovered_masses[material] = recovered_mass
+            with col4:
+                if st.button(f"Remove {material}", key=f"remove_material_{selected_scenario}_{material}"):
+                    continue
 
-        updated_composition[new_material] = new_percentage
-        total_percentage += new_percentage
+            updated_composition[new_material] = new_percentage
+            total_percentage += new_percentage
 
-    # Aggiungi nuovo materiale
-    new_material_name = st.text_input("New Material Name:", key=f"new_material_name_{selected_scenario}")
-    new_material_percentage = st.number_input(
-        "New Material Percentage (%):", min_value=0.0, max_value=100.0,
-        key=f"new_material_percentage_{selected_scenario}"
-    )
-    if st.button("Add Material", key=f"add_material_{selected_scenario}"):
-        if new_material_name and new_material_name not in updated_composition:
-            updated_composition[new_material_name] = new_material_percentage
-            st.success(f"Added new material: {new_material_name}")
-        else:
-            st.error(f"Material {new_material_name} already exists!")
-
-    # Verifica totale percentuale
-    if total_percentage > 100:
-        st.warning(f"Total composition exceeds 100% ({total_percentage:.2f}%). Adjust values.")
-    elif total_percentage < 100:
-        st.info(f"Total composition is below 100% ({total_percentage:.2f}%).")
-
-    # Display Efficiency Calculation
-    st.subheader("Efficiency Calculation")
-    total_black_mass = st.number_input(
-        "Total Black Mass (kg):", min_value=0.1, value=10.0,
-        key=f"total_black_mass_{selected_scenario}"
-    )
-    efficiencies = {}
-    total_recovered_mass = 0.0
-
-    for material, percentage in updated_composition.items():
-        initial_mass = total_black_mass * (percentage / 100)
-        recovered_mass = st.number_input(
-            f"Recovered Mass of {material} (kg):",
-            min_value=0.0, value=recovered_masses.get(material, 0.0),
-            key=f"recovered_mass_{selected_scenario}_{material}"
+        # Aggiungi nuovo materiale
+        new_material_name = st.text_input("New Material Name:", key=f"new_material_name_{selected_scenario}")
+        new_material_percentage = st.number_input(
+            "New Material Percentage (%):", min_value=0.0, max_value=100.0,
+            key=f"new_material_percentage_{selected_scenario}"
         )
-        recovered_masses[material] = recovered_mass
-        efficiency = (recovered_mass / initial_mass) * 100 if initial_mass > 0 else 0.0
-        efficiencies[material] = efficiency
-        total_recovered_mass += recovered_mass
+        new_recovered_mass = st.number_input(
+            "New Material Recovered Mass (kg):", min_value=0.0,
+            key=f"new_material_recovered_mass_{selected_scenario}"
+        )
+        if st.button("Add Material", key=f"add_material_{selected_scenario}"):
+            if new_material_name and new_material_name not in updated_composition:
+                updated_composition[new_material_name] = new_material_percentage
+                recovered_masses[new_material_name] = new_recovered_mass
+                st.success(f"Added new material: {new_material_name}")
+            else:
+                st.error(f"Material {new_material_name} already exists!")
 
-    overall_efficiency = (total_recovered_mass / total_black_mass) * 100
+        # Verifica totale percentuale
+        if total_percentage > 100:
+            st.warning(f"Total material composition exceeds 100% ({total_percentage:.2f}%). Adjust values.")
+        elif total_percentage < 100:
+            st.info(f"Total material composition is below 100% ({total_percentage:.2f}%).")
 
-    # Mostra i risultati
-    st.write(f"**Overall Process Efficiency:** {overall_efficiency:.2f}%")
-    st.write("**Efficiency per Material:**")
-    result_df = pd.DataFrame({
-        "Material": list(updated_composition.keys()),
-        "Initial Mass in BM (kg)": [total_black_mass * (p / 100) for p in updated_composition.values()],
-        "Recovered Mass (kg)": [recovered_masses.get(m, 0.0) for m in updated_composition.keys()],
-        "Efficiency (%)": [efficiencies.get(m, 0.0) for m in updated_composition.keys()]
-    })
-    st.table(result_df)
+        # Calcolo Efficienza complessiva
+        total_black_mass = st.number_input(
+            "Total Black Mass (kg):", min_value=0.1, value=10.0,
+            key=f"total_black_mass_{selected_scenario}"
+        )
+        efficiencies = {}
+        total_recovered_mass = 0.0
 
-    # Salva i dati aggiornati nello scenario corrente
-    current_scenario["technical_kpis"]["composition"] = updated_composition
-    current_scenario["technical_kpis"]["recovered_masses"] = recovered_masses
-    current_scenario["technical_kpis"]["efficiency"] = overall_efficiency
+        for material, percentage in updated_composition.items():
+            initial_mass = total_black_mass * (percentage / 100)
+            recovered_mass = recovered_masses.get(material, 0.0)
+            efficiency = (recovered_mass / initial_mass) * 100 if initial_mass > 0 else 0.0
+            efficiencies[material] = efficiency
+            total_recovered_mass += recovered_mass
 
-    # Aggiorna lo stato della sessione
-    st.session_state.amelie_scenarios[selected_scenario] = current_scenario
+        overall_efficiency = (total_recovered_mass / total_black_mass) * 100
 
-    # Persisti i dati su disco
-    save_amelie_scenarios()
-    st.success("Material and Efficiency data saved successfully!")
+        # Mostra i risultati in una tabella
+        st.write(f"**Overall Process Efficiency:** {overall_efficiency:.2f}%")
+        result_df = pd.DataFrame({
+            "Material": list(updated_composition.keys()),
+            "Initial Mass in BM (kg)": [total_black_mass * (p / 100) for p in updated_composition.values()],
+            "Recovered Mass (kg)": [recovered_masses.get(m, 0.0) for m in updated_composition.keys()],
+            "Efficiency (%)": [efficiencies.get(m, 0.0) for m in updated_composition.keys()]
+        })
+        st.table(result_df)
 
+        # Salva i dati aggiornati nello scenario corrente
+        current_scenario["technical_kpis"]["composition"] = updated_composition
+        current_scenario["technical_kpis"]["recovered_masses"] = recovered_masses
+        current_scenario["technical_kpis"]["efficiency"] = overall_efficiency
 
+        # Aggiorna lo stato della sessione
+        st.session_state.amelie_scenarios[selected_scenario] = current_scenario
+
+        # Persisti i dati su disco
+        save_amelie_scenarios()
+        st.success("Material and Efficiency data saved successfully!")
 
     # Solid/Liquid Ratios Section
     elif selected_section == "Solid/Liquid Ratios":
