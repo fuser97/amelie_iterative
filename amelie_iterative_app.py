@@ -1715,7 +1715,7 @@ def benchmarking():
         else:
             melted_df = pivot_df.melt(id_vars="Source", var_name="Phase & Liquid", value_name="S/L Ratio")
 
-        # Esegui l'operazione melt
+        pivot_df = pivot_df.reset_index()  # Rendi l'indice una colonna
         melted_df = pivot_df.melt(id_vars="Source", var_name="Phase & Liquid", value_name="S/L Ratio")
 
         fig, ax = plt.subplots(figsize=(12, 6))
