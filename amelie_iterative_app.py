@@ -239,7 +239,7 @@ if st.sidebar.button("Reset Session"):
 
 # Sidebar navigation
 st.sidebar.title("Navigation")
-page = st.sidebar.radio("Select a Page:", ["Economic KPIs", "Technical KPIs", "Literature"])
+page = st.sidebar.radio("Select a Page:", ["Economic KPIs", "Technical KPIs", "Literature", "Benchmarking"])
 
 # Initialize session state for case studies
 if "case_studies" not in st.session_state:
@@ -1473,13 +1473,15 @@ def literature():
             save_case_studies()
 
 
-# Render the selected page
 if page == "Economic KPIs":
     economic_kpis()
 elif page == "Technical KPIs":
     technical_kpis()
 elif page == "Literature":
     literature()
+elif page == "Benchmarking":
+    benchmarking()
+
 
 
 st.sidebar.title("Compare Scenarios")
@@ -1500,3 +1502,140 @@ if len(compare_scenarios) > 1:
     comparison_df = pd.DataFrame(comparison_data)
     st.table(comparison_df)
 
+
+def benchmarking():
+    st.title("Benchmarking: Compare All KPIs Across Scenarios and Literature")
+
+    # Selezione degli scenari da confrontare
+    selected_scenarios = st.multiselect(
+        "Select Scenarios to Compare:",
+        list(st.session_state.amelie_scenarios.keys()),
+        default=["default"]
+    )
+
+    # Selezione degli studi della letteratura da includere nel confronto
+    selected_case_studies = st.multiselect(
+        "Select Literature Case Studies to Compare:",
+        list(st.session_state.case_studies.keys())
+    )
+
+    # Aggregazione dei dati
+    benchmark_data = []
+    detailed_efficiency = []  # Per confrontare efficienza materiale per materiale
+    mass_volume_ratios = []  # Per confrontare rapporti massa/volume
+
+    for scenario_name in selected_scenarios:
+        scenario = st.session_state.amelie_scenarios[scenario_name]
+        technical_kpis = scenario.get("technical_kpis", {})
+        phases = technical_kpis.get("phases", {})
+
+        # Dati principali
+        benchmark_data.append({
+            "Source": f"Scenario: {scenario_name}",
+            "Energy Cost": scenario.get("energy_cost", 0),
+            "Total CapEx": sum(scenario.get("capex", {}).values()),
+            "Total OpEx": sum(scenario.get("opex", {}).values()),
+            "Overall Efficiency": technical_kpis.get("efficiency", 0),
+        })
+
+        # Efficienza materiale per materiale
+        for material, efficiency in technical_kpis.get("efficiency_per_material", {}).items():
+            detailed_efficiency.append({
+                "Source": f"Scenario: {scenario_name}",
+                "Material": material,
+                "Efficiency (%)": efficiency
+            })
+
+        # Rapporti massa/volume
+        for phase_name, phase_data in phases.items():
+            total_mass = sum(phase_data.get("masses", {}).values())
+            total_volume = sum(phase_data.get("liquids", {}).values())
+            overall_ratio = total_mass / total_volume if total_volume > 0 else 0
+            mass_volume_ratios.append({
+                "Source": f"Scenario: {scenario_name}",
+                "Phase": phase_name,
+                "Total Mass (kg)": total_mass,
+                "Total Volume (L)": total_volume,
+                "Mass/Volume Ratio": overall_ratio
+            })
+
+    for case_study_name in selected_case_studies:
+        case_study = st.session_state.case_studies[case_study_name]
+        technical_kpis = case_study.get("technical_kpis", {})
+        phases = technical_kpis.get("phases", {})
+
+        # Dati principali
+        benchmark_data.append({
+            "Source": f"Literature: {case_study_name}",
+            "Energy Cost": case_study.get("energy_cost", 0),
+            "Total CapEx": sum(case_study.get("capex", {}).values()),
+            "Total OpEx": sum(case_study.get("opex", {}).values()),
+            "Overall Efficiency": technical_kpis.get("efficiency", 0),
+        })
+
+        # Efficienza materiale per materiale
+        for material, efficiency in technical_kpis.get("efficiency_per_material", {}).items():
+            detailed_efficiency.append({
+                "Source": f"Literature: {case_study_name}",
+                "Material": material,
+                "Efficiency (%)": efficiency
+            })
+
+        # Rapporti massa/volume
+        for phase_name, phase_data in phases.items():
+            total_mass = sum(phase_data.get("masses", {}).values())
+            total_volume = sum(phase_data.get("liquids", {}).values())
+            overall_ratio = total_mass / total_volume if total_volume > 0 else 0
+            mass_volume_ratios.append({
+                "Source": f"Literature: {case_study_name}",
+                "Phase": phase_name,
+                "Total Mass (kg)": total_mass,
+                "Total Volume (L)": total_volume,
+                "Mass/Volume Ratio": overall_ratio
+            })
+
+    # Visualizzazione dei confronti
+    st.markdown("### Summary Table of Main KPIs")
+    if benchmark_data:
+        benchmark_df = pd.DataFrame(benchmark_data)
+        st.dataframe(benchmark_df)
+
+    st.markdown("### Material Efficiency Comparison")
+    if detailed_efficiency:
+        efficiency_df = pd.DataFrame(detailed_efficiency)
+        st.dataframe(efficiency_df)
+
+        # Grafico a barre per efficienza materiale per materiale
+        fig, ax = plt.subplots(figsize=(12, 6))
+        for material in efficiency_df["Material"].unique():
+            material_data = efficiency_df[efficiency_df["Material"] == material]
+            ax.bar(material_data["Source"], material_data["Efficiency (%)"], label=material)
+        ax.set_title("Material Efficiency Comparison")
+        ax.set_ylabel("Efficiency (%)")
+        ax.legend(title="Material")
+        st.pyplot(fig)
+
+    st.markdown("### Mass/Volume Ratios Comparison")
+    if mass_volume_ratios:
+        ratios_df = pd.DataFrame(mass_volume_ratios)
+        st.dataframe(ratios_df)
+
+        # Grafico radar per rapporto massa/volume per ogni fase
+        fig, ax = plt.subplots(figsize=(8, 8), subplot_kw=dict(polar=True))
+        theta = np.linspace(0, 2 * np.pi, len(ratios_df["Phase"].unique()), endpoint=False).tolist()
+        theta += theta[:1]  # Chiudere il grafico radar
+
+        for source in ratios_df["Source"].unique():
+            source_data = ratios_df[ratios_df["Source"] == source]
+            values = source_data["Mass/Volume Ratio"].tolist()
+            values += values[:1]  # Chiudere il grafico radar
+            ax.plot(theta, values, label=source)
+            ax.fill(theta, values, alpha=0.25)
+
+        ax.set_xticks(theta[:-1])
+        ax.set_xticklabels(ratios_df["Phase"].unique())
+        ax.legend(loc="upper right", bbox_to_anchor=(1.2, 1))
+        st.pyplot(fig)
+
+    if not benchmark_data and not detailed_efficiency and not mass_volume_ratios:
+        st.warning("No data available for benchmarking. Please select scenarios or literature case studies.")
