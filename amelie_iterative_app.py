@@ -1594,58 +1594,59 @@ def benchmarking():
     mass_volume_ratios = []  # Per rapporto massa/volume
     missing_data = []  # Per fonti con dati mancanti
 
-    # Funzione per elaborare una fonte
     def process_source(source):
         source_name = source["name"]
         source_type = source["type"]
         source_data = source["data"]
 
-        # Aggiungi valori di default
-        source_data.setdefault("capex", {})
-        source_data.setdefault("opex", {})
+        # Assicurati che i dati tecnici siano inizializzati
         source_data.setdefault("technical_kpis", {})
-        source_data["technical_kpis"].setdefault("efficiency_per_material", {})
         source_data["technical_kpis"].setdefault("phases", {})
-        source_data["technical_kpis"].setdefault("efficiency", 0)
 
-        technical_kpis = source_data["technical_kpis"]
-        efficiency_per_material = technical_kpis["efficiency_per_material"]
-        phases = technical_kpis["phases"]
+        # Recupera le fasi
+        phases = source_data["technical_kpis"]["phases"]
 
-        # Dati principali
-        all_data.append({
-            "Source": f"{source_type}: {source_name}",
-            "Total CapEx (EUR)": sum(source_data.get("capex", {}).values()),
-            "Total OpEx (EUR)": sum(source_data.get("opex", {}).values()),
-            "Overall Efficiency (%)": technical_kpis.get("efficiency", 0),
-        })
-
-        # Efficienza per materiale
-        for material, efficiency in efficiency_per_material.items():
-            material_efficiency_data.append({
-                "Source": f"{source_type}: {source_name}",
-                "Material": material,
-                "Efficiency (%)": efficiency,
-            })
-
-        # Rapporti massa/volume
+        # Processa i dati relativi al rapporto massa/volume per ogni fase
         for phase_name, phase_data in phases.items():
-            total_mass = sum(phase_data.get("masses", {}).values())
-            liquids = phase_data.get("liquids", {})
-            if isinstance(liquids, dict):
-                total_volume = sum(liquids.values())
-            elif isinstance(liquids, list):
-                total_volume = sum(item.get("volume", 0) for item in liquids if isinstance(item, dict))
-            else:
-                total_volume = 0  # Fallback in caso di tipo non previsto
+            # Recupera la massa totale per la fase
+            total_mass = phase_data.get("mass", 0)
 
+            # Recupera i dati sui liquidi
+            liquids = phase_data.get("liquids", [])
+            if not isinstance(liquids, list):  # Gestisce eventuali errori di formato
+                st.warning(f"Invalid data format for liquids in phase '{phase_name}' from source '{source_name}'.")
+                liquids = []
+
+            # Itera sui liquidi per calcolare il rapporto massa/volume
+            for liquid in liquids:
+                liquid_type = liquid.get("type", "Unknown")
+                liquid_volume = liquid.get("volume", 0)
+
+                # Calcolo del rapporto massa/volume
+                sl_ratio = total_mass / liquid_volume if liquid_volume > 0 else 0
+
+                # Aggiungi i dati raccolti
+                mass_volume_ratios.append({
+                    "Source": f"{source_type}: {source_name}",
+                    "Phase": phase_name,
+                    "Liquid Type": liquid_type,
+                    "Phase Mass (kg)": total_mass,
+                    "Liquid Volume (L)": liquid_volume,
+                    "S/L Ratio": sl_ratio,
+                })
+
+            # Calcolo complessivo per la fase
+            total_volume = sum(liquid.get("volume", 0) for liquid in liquids)
             overall_ratio = total_mass / total_volume if total_volume > 0 else 0
+
+            # Aggiungi i dati complessivi della fase
             mass_volume_ratios.append({
                 "Source": f"{source_type}: {source_name}",
                 "Phase": phase_name,
-                "Total Mass (kg)": total_mass,
-                "Total Volume (L)": total_volume,
-                "Mass/Volume Ratio": overall_ratio,
+                "Liquid Type": "Overall",
+                "Phase Mass (kg)": total_mass,
+                "Liquid Volume (L)": total_volume,
+                "S/L Ratio": overall_ratio,
             })
 
     # Processa tutte le fonti
@@ -1686,32 +1687,27 @@ def benchmarking():
     else:
         st.warning("No material efficiency data available for comparison.")
 
-    # Tabella unificata per rapporto massa/volume
-    st.markdown("### Unified Table of Mass/Volume Ratios")
+    st.markdown("### Comparison of Mass/Volume Ratios")
     if mass_volume_ratios:
         mass_volume_df = pd.DataFrame(mass_volume_ratios)
         st.dataframe(mass_volume_df)
 
-        # Grafico radar per rapporto massa/volume
-        fig, ax = plt.subplots(figsize=(8, 8), subplot_kw=dict(polar=True))
-        phases = mass_volume_df["Phase"].unique()
-        theta = np.linspace(0, 2 * np.pi, len(phases), endpoint=False).tolist()
-        theta += theta[:1]  # Chiudere il grafico radar
-
-        for source in mass_volume_df["Source"].unique():
-            source_data = mass_volume_df[mass_volume_df["Source"] == source]
-            ratios = source_data["Mass/Volume Ratio"].tolist()
-            ratios += ratios[:1]  # Chiudere il grafico radar
-            ax.plot(theta, ratios, label=source)
-            ax.fill(theta, ratios, alpha=0.25)
-
-        ax.set_xticks(theta[:-1])
-        ax.set_xticklabels(phases)
-        ax.legend(loc="upper right", bbox_to_anchor=(1.2, 1))
+        # Grafico per confrontare i rapporti massa/volume
+        fig, ax = plt.subplots(figsize=(12, 6))
+        for phase in mass_volume_df["Phase"].unique():
+            phase_data = mass_volume_df[mass_volume_df["Phase"] == phase]
+            ax.plot(
+                phase_data["Source"],
+                phase_data["S/L Ratio"],
+                marker='o',
+                label=f"Phase: {phase}"
+            )
+        ax.set_title("Mass/Volume Ratio Comparison")
+        ax.set_ylabel("S/L Ratio")
+        ax.legend(title="Phases", bbox_to_anchor=(1.05, 1), loc='upper left')
         st.pyplot(fig)
     else:
         st.warning("No mass/volume ratio data available for comparison.")
-
 
 
 if page == "Economic KPIs":
