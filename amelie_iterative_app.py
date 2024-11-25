@@ -1748,8 +1748,8 @@ def benchmarking():
         ax.set_xticklabels(pivot_df.index, rotation=45, ha="right")
         ax.legend(title="Phase & Liquid", bbox_to_anchor=(1.05, 1), loc="upper left")
         st.pyplot(fig)
-    else:
-        st.warning("No mass/volume ratio data available for comparison.")
+        else:
+            st.warning("No mass/volume ratio data available for comparison.")
 
 
 if page == "Economic KPIs":
