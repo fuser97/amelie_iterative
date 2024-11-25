@@ -1709,9 +1709,15 @@ def benchmarking():
 
         # Opzione 2: Grafico a Barre
         st.markdown("#### Bar Chart for Mass/Volume Ratios")
-        # Assicurati che "Source" sia una colonna e non un indice
+        # Assicurati che 'Source' sia una colonna
         if "Source" not in pivot_df.columns:
-            pivot_df = pivot_df.reset_index()  # Trasforma l'indice in una colonna
+            pivot_df = pivot_df.reset_index()  # Trasforma l'indice in colonna
+
+        # Verifica che tutte le colonne necessarie siano presenti
+        required_columns = ["Source"]
+        missing_columns = [col for col in required_columns if col not in pivot_df.columns]
+        if missing_columns:
+            raise ValueError(f"Missing required columns in DataFrame: {missing_columns}")
 
         # Esegui l'operazione melt
         melted_df = pivot_df.melt(id_vars="Source", var_name="Phase & Liquid", value_name="S/L Ratio")
