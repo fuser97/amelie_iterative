@@ -1570,6 +1570,63 @@ def benchmarking():
     # Creazione dei tab
     tab1, tab2, tab3 = st.tabs(["Economic KPIs", "Material Efficiency", "Mass/Volume Ratios"])
 
+    # Inizializzazione delle liste per i dati
+    mass_volume_ratios = []  # Aggiungi questa riga
+
+    # Funzione per processare i dati massa/volume
+    def process_mass_volume_data(source_name, source_type, source_data):
+        if "technical_kpis" in source_data and "phases" in source_data["technical_kpis"]:
+            phases = source_data["technical_kpis"]["phases"]
+            for phase_name, phase_data in phases.items():
+                total_mass = phase_data.get("mass", 0)
+                liquids = phase_data.get("liquids", [])
+
+                if not isinstance(liquids, list):
+                    continue
+
+                for liquid in liquids:
+                    liquid_type = liquid.get("type", "Unknown")
+                    liquid_volume = liquid.get("volume", 0)
+
+                    if liquid_volume > 0:
+                        sl_ratio = total_mass / liquid_volume
+                    else:
+                        sl_ratio = 0
+
+                    mass_volume_ratios.append({
+                        "Source": f"{source_type}: {source_name}",
+                        "Phase": phase_name,
+                        "Liquid Type": liquid_type,
+                        "Phase Mass (kg)": total_mass,
+                        "Liquid Volume (L)": liquid_volume,
+                        "S/L Ratio": sl_ratio,
+                    })
+
+                # Calcolo del rapporto complessivo per la fase
+                total_volume = sum(liquid.get("volume", 0) for liquid in liquids)
+                if total_volume > 0:
+                    overall_ratio = total_mass / total_volume
+                else:
+                    overall_ratio = 0
+
+                mass_volume_ratios.append({
+                    "Source": f"{source_type}: {source_name}",
+                    "Phase": phase_name,
+                    "Liquid Type": "Overall",
+                    "Phase Mass (kg)": total_mass,
+                    "Liquid Volume (L)": total_volume,
+                    "S/L Ratio": overall_ratio,
+                })
+
+    # Popolamento dei dati massa/volume
+    for scenario_name in selected_scenarios:
+        scenario = st.session_state.amelie_scenarios[scenario_name]
+        process_mass_volume_data(scenario_name, "Scenario", scenario)
+
+    for case_study_name in selected_case_studies:
+        case_study = st.session_state.case_studies[case_study_name]
+        process_mass_volume_data(case_study_name, "Literature", case_study)
+
     with tab1:
         st.markdown("### Economic KPIs Comparison")
 
