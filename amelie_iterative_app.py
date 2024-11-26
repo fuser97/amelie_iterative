@@ -1690,9 +1690,8 @@ def benchmarking():
         fig, ax = plt.subplots(figsize=(8, 8), subplot_kw=dict(polar=True))
 
         # Prepara un elenco unico di fasi e liquidi
-        phases_liquids = (
-                mass_volume_df["Phase"] + " (" + mass_volume_df["Liquid Type"] + ")"
-        ).unique()
+        phases_liquids = mass_volume_df[["Phase", "Liquid Type"]].drop_duplicates().values.tolist()
+
         num_vars = len(phases_liquids)
         angles = np.linspace(0, 2 * np.pi, num_vars, endpoint=False).tolist()
         angles += angles[:1]  # Chiudi il cerchio
@@ -1710,8 +1709,6 @@ def benchmarking():
             ax.fill(angles, data, alpha=0.25)
 
         ax.set_yticks([])
-        ax.set_xticks(angles[:-1])
-        ax.set_xticklabels(phases_liquids, fontsize=10)
         ax.set_title("Mass/Volume Ratios by Phase and Liquid")
         ax.legend(loc="upper right", bbox_to_anchor=(1.3, 1))
         st.pyplot(fig)
@@ -1722,8 +1719,7 @@ def benchmarking():
         labels = [f"{phase}\n({liquid})" for phase, liquid in phases_liquids]
 
         # Imposta le etichette sui vertici del grafico a ragnatela
-        ax.set_xticks(angles[:-1])  # Gli angoli corrispondenti ai vertici
-        ax.set_xticklabels(labels, fontsize=10)
+
 
         ax.set_title("Mass/Volume Ratios by Phase and Liquid")
         ax.legend(loc="upper right", bbox_to_anchor=(1.3, 1))
@@ -1757,7 +1753,7 @@ def benchmarking():
             ax.legend(title="Source", bbox_to_anchor=(1.05, 1), loc="upper left")
             st.pyplot(fig)
 
-        pivot_df = pivot_df.reset_index()  # Rendi l'indice una colonna
+        
         melted_df = pivot_df.melt(id_vars="Source", var_name="Phase & Liquid", value_name="S/L Ratio")
 
         fig, ax = plt.subplots(figsize=(12, 6))
