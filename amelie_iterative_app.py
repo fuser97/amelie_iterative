@@ -1599,15 +1599,37 @@ def benchmarking():
         source_type = source["type"]
         source_data = source["data"]
 
+        # Estrai i KPI economici
+        economic_kpis = source_data.get("economic_kpis", {})
+        capex = economic_kpis.get("capex", 0)
+        opex = economic_kpis.get("opex", 0)
+
+        # Aggiungi i KPI economici alla lista all_data
+        all_data.append({
+            "Source": f"{source_type}: {source_name}",
+            "CAPEX": capex,
+            "OPEX": opex,
+            "Total Cost": capex + opex
+        })
+
         # Assicurati che i dati tecnici siano inizializzati
-        source_data.setdefault("technical_kpis", {})
-        source_data["technical_kpis"].setdefault("phases", {})
+        technical_kpis = source_data.get("technical_kpis", {})
+        phases = technical_kpis.get("phases", {})
 
-        # Recupera le fasi
-        phases = source_data["technical_kpis"]["phases"]
-
-        # Processa i dati relativi al rapporto massa/volume per ogni fase
+        # Processa l'efficienza dei materiali per ogni fase
         for phase_name, phase_data in phases.items():
+            input_mass = phase_data.get("input_mass", 0)
+            output_mass = phase_data.get("output_mass", 0)
+            efficiency = (output_mass / input_mass * 100) if input_mass > 0 else 0
+
+            material_efficiency_data.append({
+                "Source": f"{source_type}: {source_name}",
+                "Phase": phase_name,
+                "Input Mass": input_mass,
+                "Output Mass": output_mass,
+                "Efficiency (%)": efficiency
+            })
+
             # Recupera la massa totale per la fase
             total_mass = phase_data.get("mass", 0)
 
@@ -1639,38 +1661,90 @@ def benchmarking():
     for source in sources:
         process_source(source)
 
-    # Visualizzazione dei rapporti massa/volume
-    st.markdown("### Comparison of Mass/Volume Ratios")
+    # Creazione dei tab per la visualizzazione
+    tab1, tab2, tab3 = st.tabs(["Economic KPIs", "Material Efficiency", "Mass/Volume Ratios"])
 
-    if mass_volume_ratios:
-        # Converte i dati in DataFrame per il confronto
-        mass_volume_df = pd.DataFrame(mass_volume_ratios)
+    with tab1:
+        st.markdown("### Economic KPIs Comparison")
+        if all_data:
+            economic_df = pd.DataFrame(all_data)
+            st.dataframe(economic_df)
 
-        # Mostra il DataFrame grezzo
-        st.dataframe(mass_volume_df)
+            # Grafico a barre per i KPI economici
+            fig, ax = plt.subplots(figsize=(10, 6))
+            x = np.arange(len(economic_df))
+            width = 0.35
 
-        # Crea una colonna combinata per Phase e Liquid Type
-        mass_volume_df['Phase_Liquid'] = mass_volume_df['Phase'] + ' - ' + mass_volume_df['Liquid Type']
+            ax.bar(x - width / 2, economic_df["CAPEX"], width, label="CAPEX")
+            ax.bar(x + width / 2, economic_df["OPEX"], width, label="OPEX")
 
-        # Crea il pivot table
-        pivot_df = pd.pivot_table(
-            mass_volume_df,
-            values='S/L Ratio',
-            index='Source',
-            columns='Phase_Liquid',
-            fill_value=0
-        ).reset_index()
+            ax.set_ylabel("Cost")
+            ax.set_title("CAPEX vs OPEX Comparison")
+            ax.set_xticks(x)
+            ax.set_xticklabels(economic_df["Source"], rotation=45, ha="right")
+            ax.legend()
+            plt.tight_layout()
+            st.pyplot(fig)
+        else:
+            st.warning("No economic data available for comparison.")
 
-        st.markdown("### Pivot Table for Mass/Volume Ratios")
-        st.dataframe(pivot_df)
+    with tab2:
+        st.markdown("### Material Efficiency Comparison")
+        if material_efficiency_data:
+            efficiency_df = pd.DataFrame(material_efficiency_data)
+            st.dataframe(efficiency_df)
 
-        # Visualizzazione Grafica
-        st.markdown("### Graphical Representation of Mass/Volume Ratios")
+            # Crea un pivot table per l'efficienza
+            pivot_efficiency = pd.pivot_table(
+                efficiency_df,
+                values="Efficiency (%)",
+                index="Source",
+                columns="Phase",
+                fill_value=0
+            )
 
-        def create_radar_chart(df):
-            if not df.empty:
+            # Grafico a barre per l'efficienza
+            fig, ax = plt.subplots(figsize=(10, 6))
+            pivot_efficiency.plot(kind="bar", ax=ax)
+            plt.title("Material Efficiency by Phase")
+            plt.xlabel("Source")
+            plt.ylabel("Efficiency (%)")
+            plt.legend(title="Phase", bbox_to_anchor=(1.05, 1))
+            plt.tight_layout()
+            st.pyplot(fig)
+        else:
+            st.warning("No efficiency data available for comparison.")
+
+    with tab3:
+        st.markdown("### Mass/Volume Ratios")
+        if mass_volume_ratios:
+            # Converte i dati in DataFrame per il confronto
+            mass_volume_df = pd.DataFrame(mass_volume_ratios)
+            st.dataframe(mass_volume_df)
+
+            # Crea una colonna combinata per Phase e Liquid Type
+            mass_volume_df['Phase_Liquid'] = mass_volume_df['Phase'] + ' - ' + mass_volume_df['Liquid Type']
+
+            # Crea il pivot table
+            pivot_df = pd.pivot_table(
+                mass_volume_df,
+                values='S/L Ratio',
+                index='Source',
+                columns='Phase_Liquid',
+                fill_value=0
+            ).reset_index()
+
+            st.markdown("### Pivot Table for Mass/Volume Ratios")
+            st.dataframe(pivot_df)
+
+            # Visualizzazione Grafica
+            st.markdown("### Graphical Representation")
+
+            # Radar Chart
+            st.markdown("#### Radar Chart")
+            if not pivot_df.empty:
                 # Rimuovi la colonna Source per il radar chart
-                plot_df = df.set_index('Source')
+                plot_df = pivot_df.set_index('Source')
 
                 fig, ax = plt.subplots(figsize=(10, 10), subplot_kw=dict(polar=True))
 
@@ -1693,59 +1767,32 @@ def benchmarking():
 
                 plt.title("Mass/Volume Ratios by Phase and Liquid")
                 plt.legend(loc='upper right', bbox_to_anchor=(1.3, 1))
+                st.pyplot(fig)
+                plt.close()
 
-                return fig
-            return None
+            # Bar Chart
+            st.markdown("#### Bar Chart")
+            pivot_df = pivot_df.reset_index()
+            melted_df = pivot_df.melt(id_vars="Source", var_name="Phase & Liquid", value_name="S/L Ratio")
 
-        def create_bar_chart(df):
-            # Prepara i dati per il grafico a barre
-            melted = df.melt(id_vars=['Source'], var_name='Phase_Liquid', value_name='S/L Ratio')
-
-            plt.figure(figsize=(15, 8))
-
-            # Calcola la larghezza delle barre
-            n_sources = len(melted['Source'].unique())
-            n_phases = len(melted['Phase_Liquid'].unique())
-            width = 0.8 / n_phases
-
-            for i, phase in enumerate(melted['Phase_Liquid'].unique()):
-                mask = melted['Phase_Liquid'] == phase
-                x = np.arange(n_sources) + i * width
-                plt.bar(x,
-                        melted[mask]['S/L Ratio'],
-                        width,
-                        label=phase,
-                        alpha=0.7)
-
-            plt.xlabel('Source')
-            plt.ylabel('S/L Ratio')
-            plt.title('Mass/Volume Ratio Comparison')
-            plt.xticks(np.arange(n_sources) + width * (n_phases - 1) / 2,
-                       melted['Source'].unique(),
-                       rotation=45,
-                       ha='right')
-            plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+            fig, ax = plt.subplots(figsize=(12, 6))
+            for phase_liquid in melted_df["Phase & Liquid"].unique():
+                phase_liquid_data = melted_df[melted_df["Phase & Liquid"] == phase_liquid]
+                ax.bar(
+                    phase_liquid_data["Source"],
+                    phase_liquid_data["S/L Ratio"],
+                    label=phase_liquid,
+                    alpha=0.7
+                )
+            ax.set_title("Mass/Volume Ratio Comparison")
+            ax.set_ylabel("S/L Ratio")
+            ax.set_xticklabels(pivot_df["Source"], rotation=45, ha="right")
+            ax.legend(title="Phase & Liquid", bbox_to_anchor=(1.05, 1), loc="upper left")
             plt.tight_layout()
-            return plt.gcf()
-
-        # Visualizzazione del grafico radar
-        st.markdown("#### Radar Chart (Spider Plot) for Phases and Liquids")
-        radar_fig = create_radar_chart(pivot_df)
-        if radar_fig:
-            st.pyplot(radar_fig)
+            st.pyplot(fig)
             plt.close()
         else:
-            st.warning("No data available for radar chart visualization")
-
-        # Visualizzazione del grafico a barre
-        st.markdown("#### Bar Chart for Mass/Volume Ratios")
-        bar_fig = create_bar_chart(pivot_df)
-        st.pyplot(bar_fig)
-        plt.close()
-
-    else:
-        st.warning("No mass/volume ratio data available for visualization")
-
+            st.warning("No mass/volume ratio data available for comparison.")
 
 if page == "Economic KPIs":
     economic_kpis()
