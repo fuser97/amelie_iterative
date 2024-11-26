@@ -1594,63 +1594,7 @@ def benchmarking():
     mass_volume_ratios = []  # Per rapporto massa/volume
     missing_data = []  # Per fonti con dati mancanti
 
-    def process_source(source):
-        source_name = source["name"]
-        source_type = source["type"]
-        source_data = source["data"]
 
-        # Assicurati che i dati tecnici siano inizializzati
-        source_data.setdefault("technical_kpis", {})
-        source_data["technical_kpis"].setdefault("phases", {})
-
-        # Recupera le fasi
-        phases = source_data["technical_kpis"]["phases"]
-
-        # Processa i dati relativi al rapporto massa/volume per ogni fase
-        for phase_name, phase_data in phases.items():
-            # Recupera la massa totale per la fase
-            total_mass = phase_data.get("mass", 0)
-
-            # Recupera i dati sui liquidi
-            liquids = phase_data.get("liquids", [])
-            if not isinstance(liquids, list):  # Gestisce eventuali errori di formato
-                st.warning(f"Invalid data format for liquids in phase '{phase_name}' from source '{source_name}'.")
-                liquids = []
-
-            # Itera sui liquidi per calcolare il rapporto massa/volume
-            for liquid in liquids:
-                liquid_type = liquid.get("type", "Unknown")
-                liquid_volume = liquid.get("volume", 0)
-
-                # Calcolo del rapporto massa/volume
-                sl_ratio = total_mass / liquid_volume if liquid_volume > 0 else 0
-
-                # Aggiungi i dati raccolti
-                mass_volume_ratios.append({
-                    "Source": f"{source_type}: {source_name}",
-                    "Phase": phase_name,
-                    "Liquid Type": liquid_type,
-                    "Phase Mass (kg)": total_mass,
-                    "Liquid Volume (L)": liquid_volume,
-                    "S/L Ratio": sl_ratio,
-                })
-
-            # Calcolo complessivo per la fase
-            total_volume = sum(liquid.get("volume", 0) for liquid in liquids)
-            overall_ratio = total_mass / total_volume if total_volume > 0 else 0
-
-            # Aggiungi i dati complessivi della fase
-            mass_volume_ratios.append({
-                "Source": f"{source_type}: {source_name}",
-                "Phase": phase_name,
-                "Liquid Type": "Overall",
-                "Phase Mass (kg)": total_mass,
-                "Liquid Volume (L)": total_volume,
-                "S/L Ratio": overall_ratio,
-            })
-
-    for source in sources:
-        process_source(source)
 
     # Visualizzazione dei rapporti massa/volume
     st.markdown("### Comparison of Mass/Volume Ratios")
