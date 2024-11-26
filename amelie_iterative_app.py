@@ -1589,10 +1589,27 @@ def benchmarking():
         })
 
     # Aggregazione dei dati
-    all_data = []  # Per combinare KPI economici
-    material_efficiency_data = []  # Per efficienza per materiale
+    capex_opex_data = []
     mass_volume_ratios = []  # Per rapporto massa/volume
-    missing_data = []  # Per fonti con dati mancanti
+
+    for source in sources:
+        source_name = source["name"]
+        source_type = source["type"]
+        source_data = source["data"]
+
+        # Assicurati che i dati di CapEx e OpEx siano inizializzati
+        capex = sum(source_data.get("capex", {}).values())
+        opex = sum(source_data.get("opex", {}).values())
+
+        # Aggiungi i dati di CapEx e OpEx alla lista
+        capex_opex_data.append({
+            "Source": f"{source_type}: {source_name}",
+            "CapEx (EUR)": capex,
+            "OpEx (EUR)": opex
+        })
+
+        # Processa i dati relativi al rapporto massa/volume
+        process_source(source)  # Usa la funzione pre-esistente
 
     def process_source(source):
         source_name = source["name"]
@@ -1652,6 +1669,33 @@ def benchmarking():
     # Processa tutte le fonti
     for source in sources:
         process_source(source)
+
+    # Visualizzazione dei dati di CapEx e OpEx
+    st.markdown("### Comparison of CapEx and OpEx")
+
+    # Converte i dati in DataFrame per il confronto
+    capex_opex_df = pd.DataFrame(capex_opex_data)
+    st.dataframe(capex_opex_df)
+
+    # Grafico a barre per CapEx e OpEx
+    st.markdown("#### Bar Chart for CapEx and OpEx")
+    fig, ax = plt.subplots(figsize=(10, 6))
+    width = 0.4  # Larghezza delle barre
+    x = np.arange(len(capex_opex_df["Source"]))
+
+    # Barre per CapEx e OpEx
+    ax.bar(x - width / 2, capex_opex_df["CapEx (EUR)"], width=width, label="CapEx")
+    ax.bar(x + width / 2, capex_opex_df["OpEx (EUR)"], width=width, label="OpEx")
+
+    # Configurazione grafico
+    ax.set_title("Comparison of CapEx and OpEx")
+    ax.set_xlabel("Sources")
+    ax.set_ylabel("Cost (EUR)")
+    ax.set_xticks(x)
+    ax.set_xticklabels(capex_opex_df["Source"], rotation=45, ha="right")
+    ax.legend()
+
+    st.pyplot(fig)
 
     # Visualizzazione dei rapporti massa/volume
     st.markdown("### Comparison of Mass/Volume Ratios")
