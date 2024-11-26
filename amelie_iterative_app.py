@@ -1628,54 +1628,52 @@ def benchmarking():
         process_mass_volume_data(case_study_name, "Literature", case_study)
 
     with tab1:
+        # Visualizzazione dei KPI economici
         st.markdown("### Economic KPIs Comparison")
 
         # Preparazione dei dati economici
         economic_data = []
 
         # Raccolta dati dagli scenari
-        for scenario_name in selected_scenarios:
-            scenario = st.session_state.amelie_scenarios[scenario_name]
-            if "economic_kpis" in scenario:
-                economic_data.append({
-                    "Source": f"Scenario: {scenario_name}",
-                    "CAPEX": scenario["economic_kpis"].get("capex", 0),
-                    "OPEX": scenario["economic_kpis"].get("opex", 0)
-                })
+        for source in sources:
+            source_name = source["name"]
+            source_type = source["type"]
+            source_data = source["data"]
 
-        # Raccolta dati dalla letteratura
-        for case_study_name in selected_case_studies:
-            case_study = st.session_state.case_studies[case_study_name]
-            if "economic_kpis" in case_study:
-                economic_data.append({
-                    "Source": f"Literature: {case_study_name}",
-                    "CAPEX": case_study["economic_kpis"].get("capex", 0),
-                    "OPEX": case_study["economic_kpis"].get("opex", 0)
-                })
+            # Assicurati che CapEx e OpEx esistano nei dati
+            capex = sum(source_data.get("capex", {}).values())
+            opex = sum(source_data.get("opex", {}).values())
+
+            economic_data.append({
+                "Source": f"{source_type}: {source_name}",
+                "CapEx (EUR)": capex,
+                "OpEx (EUR)": opex
+            })
 
         if economic_data:
+            # Creazione DataFrame
             df_economic = pd.DataFrame(economic_data)
 
-            # Visualizzazione separata per CAPEX e OPEX
+            # Visualizzazione separata per CapEx e OpEx
             col1, col2 = st.columns(2)
 
             with col1:
-                st.markdown("#### CAPEX Comparison")
+                st.markdown("#### CapEx Comparison")
                 fig_capex = plt.figure(figsize=(8, 6))
-                plt.bar(df_economic["Source"], df_economic["CAPEX"])
+                plt.bar(df_economic["Source"], df_economic["CapEx (EUR)"], color='skyblue')
                 plt.xticks(rotation=45, ha='right')
-                plt.title("CAPEX Comparison")
-                plt.ylabel("CAPEX")
+                plt.title("CapEx Comparison")
+                plt.ylabel("CapEx (EUR)")
                 plt.tight_layout()
                 st.pyplot(fig_capex)
 
             with col2:
-                st.markdown("#### OPEX Comparison")
+                st.markdown("#### OpEx Comparison")
                 fig_opex = plt.figure(figsize=(8, 6))
-                plt.bar(df_economic["Source"], df_economic["OPEX"])
+                plt.bar(df_economic["Source"], df_economic["OpEx (EUR)"], color='orange')
                 plt.xticks(rotation=45, ha='right')
-                plt.title("OPEX Comparison")
-                plt.ylabel("OPEX")
+                plt.title("OpEx Comparison")
+                plt.ylabel("OpEx (EUR)")
                 plt.tight_layout()
                 st.pyplot(fig_opex)
 
