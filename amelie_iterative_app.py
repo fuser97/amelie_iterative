@@ -1713,6 +1713,7 @@ def benchmarking():
         if "Source" not in pivot_df.columns:
             st.error("Column 'Source' not found in the DataFrame. Please check the pivot table.")
         else:
+            pivot_df = pivot_df.reset_index()  # Assicura che "Source" sia una colonna
             melted_df = pivot_df.melt(id_vars="Source", var_name="Phase & Liquid", value_name="S/L Ratio")
 
         pivot_df = pivot_df.reset_index()  # Rendi l'indice una colonna
