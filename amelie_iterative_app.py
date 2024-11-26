@@ -1666,31 +1666,23 @@ def benchmarking():
 
         mass_volume_df["Source_Backup"] = mass_volume_df["Source"]
 
-        # Raggruppamento e preparazione dei dati
-        grouped_data = mass_volume_df.groupby(["Source", "Phase", "Liquid Type"]).mean().reset_index()
+        pivot_df = mass_volume_df.pivot_table(
+            index="Source",
+            columns=["Phase", "Liquid Type"],
+            values="S/L Ratio",
+            aggfunc='first'
+        )
 
-        # Visualizzazione tabellare dei dati
-        st.markdown("### Mass/Volume Ratios Table")
-        st.dataframe(grouped_data)
+        # Dopo la creazione del pivot_df
+        pivot_df = pivot_df.fillna(0)  # o altro valore appropriato
+        # Assicura che Source sia una colonna
+        pivot_df.reset_index(inplace=True)
 
-        # Generazione del grafico a barre direttamente dai dati raggruppati
-        st.markdown("### Bar Chart for Mass/Volume Ratios")
-        fig, ax = plt.subplots(figsize=(12, 6))
-        for phase in grouped_data["Phase"].unique():
-            phase_data = grouped_data[grouped_data["Phase"] == phase]
-            ax.bar(
-                phase_data["Source"] + " - " + phase_data["Liquid Type"],
-                phase_data["S/L Ratio"],
-                label=phase,
-                alpha=0.7
-            )
+        # Verifica
+        st.write(pivot_df.head())
 
-        ax.set_title("Mass/Volume Ratio Comparison")
-        ax.set_ylabel("S/L Ratio")
-        ax.set_xlabel("Source - Liquid Type")
-        ax.legend(title="Phase", bbox_to_anchor=(1.05, 1), loc="upper left")
-        plt.xticks(rotation=45, ha="right")
-        st.pyplot(fig)
+        # Melt senza errori
+        melted_df = pivot_df.melt(id_vars="Source", var_name="Phase & Liquid", value_name="S/L Ratio")
 
         st.markdown("### Pivot Table for Mass/Volume Ratios")
         st.dataframe(pivot_df)
@@ -1698,74 +1690,82 @@ def benchmarking():
         # Visualizzazione Grafica
         st.markdown("### Graphical Representation of Mass/Volume Ratios")
 
-        # Opzione 1: Grafico a Ragnatela
+        def create_radar_chart(pivot_df):
+            if not pivot_df.empty:
+                fig, ax = plt.subplots(figsize=(10, 10), subplot_kw=dict(polar=True))
+
+                # Preparazione degli angoli
+                categories = pivot_df.columns.tolist()
+                num_vars = len(categories)
+                angles = np.linspace(0, 2 * np.pi, num_vars, endpoint=False).tolist()
+
+                # Completa il cerchio
+                angles += angles[:1]
+
+                # Iterazione sulle righe del pivot_df
+                for idx, row in pivot_df.iterrows():
+                    values = row.values.flatten().tolist()
+                    values += values[:1]
+                    ax.plot(angles, values, linewidth=1, linestyle='solid', label=idx)
+                    ax.fill(angles, values, alpha=0.1)
+
+                # Impostazione delle etichette
+                ax.set_xticks(angles[:-1])
+                ax.set_xticklabels(categories, size=8)
+
+                # Aggiungi titolo e legenda
+                plt.title("Mass/Volume Ratios by Phase and Liquid")
+                plt.legend(loc='upper right', bbox_to_anchor=(1.3, 1))
+
+                return fig
+            return None
+
+        def create_bar_chart(melted_df):
+            plt.figure(figsize=(15, 8))
+
+            # Calcola la larghezza delle barre
+            n_sources = len(melted_df['Source'].unique())
+            n_phases = len(melted_df['Phase & Liquid'].unique())
+            width = 0.8 / n_phases
+
+            for i, phase in enumerate(melted_df['Phase & Liquid'].unique()):
+                mask = melted_df['Phase & Liquid'] == phase
+                x = np.arange(n_sources) + i * width
+                plt.bar(x,
+                        melted_df[mask]['S/L Ratio'],
+                        width,
+                        label=phase,
+                        alpha=0.7)
+
+            plt.xlabel('Source')
+            plt.ylabel('S/L Ratio')
+            plt.title('Mass/Volume Ratio Comparison')
+            plt.xticks(np.arange(n_sources) + width * (n_phases - 1) / 2,
+                       melted_df['Source'].unique(),
+                       rotation=45,
+                       ha='right')
+            plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+            plt.tight_layout()
+            return plt.gcf()
+
+        # Nel tuo codice principale, dopo la creazione del pivot_df:
+
+        # Visualizzazione del grafico radar
         st.markdown("#### Radar Chart (Spider Plot) for Phases and Liquids")
-        fig, ax = plt.subplots(figsize=(8, 8), subplot_kw=dict(polar=True))
+        radar_fig = create_radar_chart(pivot_df)
+        if radar_fig:
+            st.pyplot(radar_fig)
+        else:
+            st.warning("No data available for radar chart visualization")
 
-        # Preparazione degli angoli per il grafico radar
-        phases_liquids = pivot_df.columns
-        num_vars = len(phases_liquids)
-        angles = np.linspace(0, 2 * np.pi, num_vars, endpoint=False).tolist()
-        angles += angles[:1]  # Chiudi il cerchio
-
-        # Traccia ogni scenario
-        for source, values in pivot_df.iterrows():
-            data = values.tolist()
-            data += data[:1]  # Chiudi il cerchio
-            ax.plot(angles, data, label=source, linewidth=2)
-            ax.fill(angles, data, alpha=0.25)
-
-        ax.set_yticks([])
-        ax.set_xticks(angles[:-1])
-        # Crea etichette leggibili per ogni combinazione fase/liquido
-        labels = [f"{phase}\n({liquid})" for phase, liquid in phases_liquids]
-
-        # Imposta le etichette sui vertici del grafico a ragnatela
-        ax.set_xticks(angles[:-1])  # Gli angoli corrispondenti ai vertici
-        ax.set_xticklabels(labels, fontsize=10)
-
-        ax.set_title("Mass/Volume Ratios by Phase and Liquid")
-        ax.legend(loc="upper right", bbox_to_anchor=(1.3, 1))
-        st.pyplot(fig)
-
-    # Opzione 2: Grafico a Barre
-    st.markdown("#### Bar Chart for Mass/Volume Ratios")
-
-    # Verifica che "Source" sia una colonna
-    if "Source" not in pivot_df.columns:
-        st.error("Column 'Source' not found in the DataFrame. Attempting to reset index...")
-        pivot_df.reset_index(inplace=True)
-        st.write("Reset index applied. Updated columns:", pivot_df.columns)  # Debug per confermare il reset
-
-    if "Source" in pivot_df.columns:
-        # Genera il DataFrame melt
-        melted_df = pivot_df.melt(id_vars="Source", var_name="Phase & Liquid", value_name="S/L Ratio")
-        st.write(melted_df.head())  # Debug: Mostra i dati trasformati
-
-        # Genera il grafico a barre
-        fig, ax = plt.subplots(figsize=(12, 6))
-        for phase_liquid in melted_df["Phase & Liquid"].unique():
-            # Filtra i dati per ogni combinazione di Phase & Liquid
-            phase_liquid_data = melted_df[melted_df["Phase & Liquid"] == phase_liquid]
-            ax.bar(
-                phase_liquid_data["Source"],
-                phase_liquid_data["S/L Ratio"],
-                label=phase_liquid,
-                alpha=0.7
-            )
-
-        # Configura il grafico
-        ax.set_title("Mass/Volume Ratio Comparison")
-        ax.set_ylabel("S/L Ratio")
-        ax.set_xlabel("Source")
-        ax.set_xticks(
-            range(len(melted_df["Source"].unique())))  # Assicura che i tick siano posizionati correttamente
-        ax.set_xticklabels(melted_df["Source"].unique(), rotation=45, ha="right")
-        ax.legend(title="Phase & Liquid", bbox_to_anchor=(1.05, 1), loc="upper left")
-        st.pyplot(fig)
-    else:
-        st.warning("Unable to generate bar chart because 'Source' column is missing.")
-
+        # Visualizzazione del grafico a barre
+        st.markdown("#### Bar Chart for Mass/Volume Ratios")
+        if "Source" in pivot_df.columns:
+            melted_df = pivot_df.melt(id_vars="Source", var_name="Phase & Liquid", value_name="S/L Ratio")
+            bar_fig = create_bar_chart(melted_df)
+            st.pyplot(bar_fig)
+        else:
+            st.warning("Unable to generate bar chart because 'Source' column is missing.")
 
 if page == "Economic KPIs":
     economic_kpis()
