@@ -1669,7 +1669,7 @@ def benchmarking():
             index="Source",
             columns=["Phase", "Liquid Type"],
             values="S/L Ratio"
-        ).fillna(0)  # Riempie i valori mancanti con 0
+        ).reset_index().fillna(0)  # Riempie i valori mancanti con 0
 
         st.markdown("### Pivot Table for Mass/Volume Ratios")
         st.dataframe(pivot_df)
@@ -1713,10 +1713,9 @@ def benchmarking():
         if "Source" not in pivot_df.columns:
             st.error("Column 'Source' not found in the DataFrame. Please check the pivot table.")
         else:
-            pivot_df = pivot_df.reset_index()  # Assicura che "Source" sia una colonna
             melted_df = pivot_df.melt(id_vars="Source", var_name="Phase & Liquid", value_name="S/L Ratio")
 
-        pivot_df = pivot_df.reset_index()  # Rendi l'indice una colonna
+
         melted_df = pivot_df.melt(id_vars="Source", var_name="Phase & Liquid", value_name="S/L Ratio")
 
         fig, ax = plt.subplots(figsize=(12, 6))
