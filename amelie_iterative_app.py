@@ -1628,60 +1628,191 @@ def benchmarking():
         process_mass_volume_data(case_study_name, "Literature", case_study)
 
     with tab1:
-        # Visualizzazione dei KPI economici
-        st.markdown("### Economic KPIs Comparison")
+        def benchmarking():
+            st.title("Benchmarking: Unified Comparison Across Scenarios and Literature")
 
-        # Preparazione dei dati economici
-        economic_data = []
+            # Selezione delle fonti (scenari e letteratura)
+            selected_scenarios = st.multiselect(
+                "Select Scenarios to Compare:",
+                list(st.session_state.amelie_scenarios.keys()),
+                default=["default"],
+                key="benchmarking_scenarios"
+            )
+            selected_case_studies = st.multiselect(
+                "Select Literature Case Studies to Compare:",
+                list(st.session_state.case_studies.keys()),
+                key="benchmarking_case_studies"
+            )
 
-        # Raccolta dati dagli scenari
-        for source in sources:
-            source_name = source["name"]
-            source_type = source["type"]
-            source_data = source["data"]
+            # Unifica scenari e letteratura in un'unica lista
+            sources = []
 
-            # Assicurati che CapEx e OpEx esistano nei dati
-            capex = sum(source_data.get("capex", {}).values())
-            opex = sum(source_data.get("opex", {}).values())
+            # Aggiungi gli scenari
+            for scenario_name in selected_scenarios:
+                scenario_data = st.session_state.amelie_scenarios.get(scenario_name, {})
+                sources.append({
+                    "name": scenario_name,
+                    "type": "Scenario",
+                    "data": scenario_data
+                })
 
-            economic_data.append({
-                "Source": f"{source_type}: {source_name}",
-                "CapEx (EUR)": capex,
-                "OpEx (EUR)": opex
-            })
+            # Aggiungi i casi di letteratura
+            for case_study_name in selected_case_studies:
+                case_study_data = st.session_state.case_studies.get(case_study_name, {})
+                sources.append({
+                    "name": case_study_name,
+                    "type": "Literature",
+                    "data": case_study_data
+                })
 
-        if economic_data:
-            # Creazione DataFrame
-            df_economic = pd.DataFrame(economic_data)
+            # Aggregazione dei dati
+            all_data = []  # Per combinare KPI economici
+            material_efficiency_data = []  # Per efficienza per materiale
+            mass_volume_ratios = []  # Per rapporto massa/volume
+            missing_data = []  # Per fonti con dati mancanti
 
-            # Visualizzazione separata per CapEx e OpEx
-            col1, col2 = st.columns(2)
+            def process_source(source):
+                source_name = source["name"]
+                source_type = source["type"]
+                source_data = source["data"]
 
-            with col1:
-                st.markdown("#### CapEx Comparison")
-                fig_capex = plt.figure(figsize=(8, 6))
-                plt.bar(df_economic["Source"], df_economic["CapEx (EUR)"], color='skyblue')
-                plt.xticks(rotation=45, ha='right')
-                plt.title("CapEx Comparison")
-                plt.ylabel("CapEx (EUR)")
-                plt.tight_layout()
-                st.pyplot(fig_capex)
+                # Assicurati che i dati tecnici siano inizializzati
+                source_data.setdefault("technical_kpis", {})
+                source_data["technical_kpis"].setdefault("phases", {})
 
-            with col2:
-                st.markdown("#### OpEx Comparison")
-                fig_opex = plt.figure(figsize=(8, 6))
-                plt.bar(df_economic["Source"], df_economic["OpEx (EUR)"], color='orange')
-                plt.xticks(rotation=45, ha='right')
-                plt.title("OpEx Comparison")
-                plt.ylabel("OpEx (EUR)")
-                plt.tight_layout()
-                st.pyplot(fig_opex)
+                # Recupera le fasi
+                phases = source_data["technical_kpis"]["phases"]
 
-            # Mostra i dati in formato tabella
-            st.markdown("#### Economic Data Table")
-            st.dataframe(df_economic)
-        else:
-            st.warning("No economic data available for comparison.")
+                # Processa i dati relativi al rapporto massa/volume per ogni fase
+                for phase_name, phase_data in phases.items():
+                    # Recupera la massa totale per la fase
+                    total_mass = phase_data.get("mass", 0)
+
+                    # Recupera i dati sui liquidi
+                    liquids = phase_data.get("liquids", [])
+                    if not isinstance(liquids, list):  # Gestisce eventuali errori di formato
+                        st.warning(
+                            f"Invalid data format for liquids in phase '{phase_name}' from source '{source_name}'.")
+                        liquids = []
+
+                    # Itera sui liquidi per calcolare il rapporto massa/volume
+                    for liquid in liquids:
+                        liquid_type = liquid.get("type", "Unknown")
+                        liquid_volume = liquid.get("volume", 0)
+
+                        # Calcolo del rapporto massa/volume
+                        sl_ratio = total_mass / liquid_volume if liquid_volume > 0 else 0
+
+                        # Aggiungi i dati raccolti
+                        mass_volume_ratios.append({
+                            "Source": f"{source_type}: {source_name}",
+                            "Phase": phase_name,
+                            "Liquid Type": liquid_type,
+                            "Phase Mass (kg)": total_mass,
+                            "Liquid Volume (L)": liquid_volume,
+                            "S/L Ratio": sl_ratio,
+                        })
+
+                    # Calcolo complessivo per la fase
+                    total_volume = sum(liquid.get("volume", 0) for liquid in liquids)
+                    overall_ratio = total_mass / total_volume if total_volume > 0 else 0
+
+                    # Aggiungi i dati complessivi della fase
+                    mass_volume_ratios.append({
+                        "Source": f"{source_type}: {source_name}",
+                        "Phase": phase_name,
+                        "Liquid Type": "Overall",
+                        "Phase Mass (kg)": total_mass,
+                        "Liquid Volume (L)": total_volume,
+                        "S/L Ratio": overall_ratio,
+                    })
+
+            # Processa tutte le fonti
+            for source in sources:
+                process_source(source)
+
+            # Visualizzazione dei rapporti massa/volume
+            st.markdown("### Comparison of Mass/Volume Ratios")
+
+            if mass_volume_ratios:
+                # Converte i dati in DataFrame per il confronto
+                mass_volume_df = pd.DataFrame(mass_volume_ratios)
+                st.dataframe(mass_volume_df)
+
+                # Identifica tutte le combinazioni uniche di fasi e liquidi per garantire uniformità
+                unique_phases_liquids = mass_volume_df[["Phase", "Liquid Type"]].drop_duplicates()
+
+                # Pivot per organizzare i dati
+                pivot_df = mass_volume_df.pivot(
+                    index="Source",
+                    columns=["Phase", "Liquid Type"],
+                    values="S/L Ratio"
+                ).fillna(0)  # Riempie i valori mancanti con 0
+
+                st.markdown("### Pivot Table for Mass/Volume Ratios")
+                st.dataframe(pivot_df)
+
+                # Visualizzazione Grafica
+                st.markdown("### Graphical Representation of Mass/Volume Ratios")
+
+                # Opzione 1: Grafico a Ragnatela
+                st.markdown("#### Radar Chart (Spider Plot) for Phases and Liquids")
+                fig, ax = plt.subplots(figsize=(8, 8), subplot_kw=dict(polar=True))
+
+                # Preparazione degli angoli per il grafico radar
+                phases_liquids = pivot_df.columns
+                num_vars = len(phases_liquids)
+                angles = np.linspace(0, 2 * np.pi, num_vars, endpoint=False).tolist()
+                angles += angles[:1]  # Chiudi il cerchio
+
+                # Traccia ogni scenario
+                for source, values in pivot_df.iterrows():
+                    data = values.tolist()
+                    data += data[:1]  # Chiudi il cerchio
+                    ax.plot(angles, data, label=source, linewidth=2)
+                    ax.fill(angles, data, alpha=0.25)
+
+                ax.set_yticks([])
+                ax.set_xticks(angles[:-1])
+                # Crea etichette leggibili per ogni combinazione fase/liquido
+                labels = [f"{phase}\n({liquid})" for phase, liquid in phases_liquids]
+
+                # Imposta le etichette sui vertici del grafico a ragnatela
+                ax.set_xticks(angles[:-1])  # Gli angoli corrispondenti ai vertici
+                ax.set_xticklabels(labels, fontsize=10)
+
+                ax.set_title("Mass/Volume Ratios by Phase and Liquid")
+                ax.legend(loc="upper right", bbox_to_anchor=(1.3, 1))
+                st.pyplot(fig)
+
+                # Opzione 2: Grafico a Barre
+                st.markdown("#### Bar Chart for Mass/Volume Ratios")
+                # Assicurati che "Source" sia una colonna e non un indice
+                if "Source" not in pivot_df.columns:
+                    st.error("Column 'Source' not found in the DataFrame. Please check the pivot table.")
+                else:
+                    pivot_df = pivot_df.reset_index()  # Assicura che "Source" sia una colonna
+                    melted_df = pivot_df.melt(id_vars="Source", var_name="Phase & Liquid", value_name="S/L Ratio")
+
+                pivot_df = pivot_df.reset_index()  # Rendi l'indice una colonna
+                melted_df = pivot_df.melt(id_vars="Source", var_name="Phase & Liquid", value_name="S/L Ratio")
+
+                fig, ax = plt.subplots(figsize=(12, 6))
+                for phase_liquid in melted_df["Phase & Liquid"].unique():
+                    phase_liquid_data = melted_df[melted_df["Phase & Liquid"] == phase_liquid]
+                    ax.bar(
+                        phase_liquid_data["Source"],
+                        phase_liquid_data["S/L Ratio"],
+                        label=phase_liquid,
+                        alpha=0.7
+                    )
+                ax.set_title("Mass/Volume Ratio Comparison")
+                ax.set_ylabel("S/L Ratio")
+                ax.set_xticklabels(pivot_df.index, rotation=45, ha="right")
+                ax.legend(title="Phase & Liquid", bbox_to_anchor=(1.05, 1), loc="upper left")
+                st.pyplot(fig)
+            else:
+                st.warning("No mass/volume ratio data available for comparison.")
 
     with tab2:
         st.markdown("### Material Efficiency Comparison")
