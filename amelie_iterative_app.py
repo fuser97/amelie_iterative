@@ -1675,7 +1675,9 @@ def benchmarking():
 
     # Converte i dati in DataFrame per il confronto
     capex_opex_df = pd.DataFrame(capex_opex_data)
-    st.dataframe(capex_opex_df)
+
+    # Mostra i dati in formato tabellare
+    st.table(capex_opex_df)
 
     # Grafico a barre per CapEx e OpEx
     st.markdown("#### Bar Chart for CapEx and OpEx")
@@ -1695,6 +1697,7 @@ def benchmarking():
     ax.set_xticklabels(capex_opex_df["Source"], rotation=45, ha="right")
     ax.legend()
 
+    # Visualizza il grafico
     st.pyplot(fig)
 
     # Visualizzazione dei rapporti massa/volume
