@@ -1670,9 +1670,9 @@ def benchmarking():
     process_source(source)  # Usa la funzione pre-esistente
 
         # Processa tutte le fonti
-    
-        for source in sources:
-          process_source(source)
+
+    for source in sources:
+        process_source(source)
 
     # Visualizzazione dei dati di CapEx e OpEx
     st.markdown("### Comparison of CapEx and OpEx")
