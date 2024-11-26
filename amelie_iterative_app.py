@@ -1613,7 +1613,7 @@ def benchmarking():
 
             # Recupera i dati sui liquidi
             liquids = phase_data.get("liquids", [])
-            if not isinstance(liquids, list):  # Gestisce eventuali errori di formato
+            if not isinstance(liquids, list):
                 st.warning(f"Invalid data format for liquids in phase '{phase_name}' from source '{source_name}'.")
                 liquids = []
 
@@ -1635,20 +1635,6 @@ def benchmarking():
                     "S/L Ratio": sl_ratio,
                 })
 
-            # Calcolo complessivo per la fase
-            total_volume = sum(liquid.get("volume", 0) for liquid in liquids)
-            overall_ratio = total_mass / total_volume if total_volume > 0 else 0
-
-            # Aggiungi i dati complessivi della fase
-            mass_volume_ratios.append({
-                "Source": f"{source_type}: {source_name}",
-                "Phase": phase_name,
-                "Liquid Type": "Overall",
-                "Phase Mass (kg)": total_mass,
-                "Liquid Volume (L)": total_volume,
-                "S/L Ratio": overall_ratio,
-            })
-
     # Processa tutte le fonti
     for source in sources:
         process_source(source)
@@ -1659,30 +1645,21 @@ def benchmarking():
     if mass_volume_ratios:
         # Converte i dati in DataFrame per il confronto
         mass_volume_df = pd.DataFrame(mass_volume_ratios)
+
+        # Mostra il DataFrame grezzo
         st.dataframe(mass_volume_df)
 
-        # Identifica tutte le combinazioni uniche di fasi e liquidi per garantire uniformità
-        unique_phases_liquids = mass_volume_df[["Phase", "Liquid Type"]].drop_duplicates()
+        # Crea una colonna combinata per Phase e Liquid Type
+        mass_volume_df['Phase_Liquid'] = mass_volume_df['Phase'] + ' - ' + mass_volume_df['Liquid Type']
 
-        mass_volume_df["Source_Backup"] = mass_volume_df["Source"]
-
-        pivot_df = mass_volume_df.pivot_table(
-            index="Source",
-            columns=["Phase", "Liquid Type"],
-            values="S/L Ratio",
-            aggfunc='first'
-        )
-
-        # Dopo la creazione del pivot_df
-        pivot_df = pivot_df.fillna(0)  # o altro valore appropriato
-        # Assicura che Source sia una colonna
-        pivot_df.reset_index(inplace=True)
-
-        # Verifica
-        st.write(pivot_df.head())
-
-        # Melt senza errori
-        melted_df = pivot_df.melt(id_vars="Source", var_name="Phase & Liquid", value_name="S/L Ratio")
+        # Crea il pivot table
+        pivot_df = pd.pivot_table(
+            mass_volume_df,
+            values='S/L Ratio',
+            index='Source',
+            columns='Phase_Liquid',
+            fill_value=0
+        ).reset_index()
 
         st.markdown("### Pivot Table for Mass/Volume Ratios")
         st.dataframe(pivot_df)
@@ -1690,22 +1667,23 @@ def benchmarking():
         # Visualizzazione Grafica
         st.markdown("### Graphical Representation of Mass/Volume Ratios")
 
-        def create_radar_chart(pivot_df):
-            if not pivot_df.empty:
+        def create_radar_chart(df):
+            if not df.empty:
+                # Rimuovi la colonna Source per il radar chart
+                plot_df = df.set_index('Source')
+
                 fig, ax = plt.subplots(figsize=(10, 10), subplot_kw=dict(polar=True))
 
                 # Preparazione degli angoli
-                categories = pivot_df.columns.tolist()
+                categories = plot_df.columns.tolist()
                 num_vars = len(categories)
                 angles = np.linspace(0, 2 * np.pi, num_vars, endpoint=False).tolist()
+                angles += angles[:1]  # Completa il cerchio
 
-                # Completa il cerchio
-                angles += angles[:1]
-
-                # Iterazione sulle righe del pivot_df
-                for idx, row in pivot_df.iterrows():
-                    values = row.values.flatten().tolist()
-                    values += values[:1]
+                # Iterazione sulle righe
+                for idx in plot_df.index:
+                    values = plot_df.loc[idx].values.tolist()
+                    values += values[:1]  # Completa il cerchio
                     ax.plot(angles, values, linewidth=1, linestyle='solid', label=idx)
                     ax.fill(angles, values, alpha=0.1)
 
@@ -1713,26 +1691,28 @@ def benchmarking():
                 ax.set_xticks(angles[:-1])
                 ax.set_xticklabels(categories, size=8)
 
-                # Aggiungi titolo e legenda
                 plt.title("Mass/Volume Ratios by Phase and Liquid")
                 plt.legend(loc='upper right', bbox_to_anchor=(1.3, 1))
 
                 return fig
             return None
 
-        def create_bar_chart(melted_df):
+        def create_bar_chart(df):
+            # Prepara i dati per il grafico a barre
+            melted = df.melt(id_vars=['Source'], var_name='Phase_Liquid', value_name='S/L Ratio')
+
             plt.figure(figsize=(15, 8))
 
             # Calcola la larghezza delle barre
-            n_sources = len(melted_df['Source'].unique())
-            n_phases = len(melted_df['Phase & Liquid'].unique())
+            n_sources = len(melted['Source'].unique())
+            n_phases = len(melted['Phase_Liquid'].unique())
             width = 0.8 / n_phases
 
-            for i, phase in enumerate(melted_df['Phase & Liquid'].unique()):
-                mask = melted_df['Phase & Liquid'] == phase
+            for i, phase in enumerate(melted['Phase_Liquid'].unique()):
+                mask = melted['Phase_Liquid'] == phase
                 x = np.arange(n_sources) + i * width
                 plt.bar(x,
-                        melted_df[mask]['S/L Ratio'],
+                        melted[mask]['S/L Ratio'],
                         width,
                         label=phase,
                         alpha=0.7)
@@ -1741,31 +1721,31 @@ def benchmarking():
             plt.ylabel('S/L Ratio')
             plt.title('Mass/Volume Ratio Comparison')
             plt.xticks(np.arange(n_sources) + width * (n_phases - 1) / 2,
-                       melted_df['Source'].unique(),
+                       melted['Source'].unique(),
                        rotation=45,
                        ha='right')
             plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
             plt.tight_layout()
             return plt.gcf()
 
-        # Nel tuo codice principale, dopo la creazione del pivot_df:
-
         # Visualizzazione del grafico radar
         st.markdown("#### Radar Chart (Spider Plot) for Phases and Liquids")
         radar_fig = create_radar_chart(pivot_df)
         if radar_fig:
             st.pyplot(radar_fig)
+            plt.close()
         else:
             st.warning("No data available for radar chart visualization")
 
         # Visualizzazione del grafico a barre
         st.markdown("#### Bar Chart for Mass/Volume Ratios")
-        if "Source" in pivot_df.columns:
-            melted_df = pivot_df.melt(id_vars="Source", var_name="Phase & Liquid", value_name="S/L Ratio")
-            bar_fig = create_bar_chart(melted_df)
-            st.pyplot(bar_fig)
-        else:
-            st.warning("Unable to generate bar chart because 'Source' column is missing.")
+        bar_fig = create_bar_chart(pivot_df)
+        st.pyplot(bar_fig)
+        plt.close()
+
+    else:
+        st.warning("No mass/volume ratio data available for visualization")
+
 
 if page == "Economic KPIs":
     economic_kpis()
