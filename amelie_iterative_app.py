@@ -1734,53 +1734,7 @@ def benchmarking():
         ax.legend(loc="upper right", bbox_to_anchor=(1.3, 1))
         st.pyplot(fig)
 
-        # Opzione 2: Grafico a Barre
-        st.markdown("#### Bar Chart for Mass/Volume Ratios")
-        # Assicurati che "Source" sia una colonna e non un indice
-        if "Source" not in pivot_df.columns:
-            st.error("Column 'Source' not found in the DataFrame. Please check the pivot table.")
-        else:
-            fig, ax = plt.subplots(figsize=(12, 6))
-
-            # Crea un grafico a barre per ogni fonte
-            for source in mass_volume_df["Source"].unique():
-                source_data = mass_volume_df[mass_volume_df["Source"] == source]
-                ax.bar(
-                    source_data["Phase"] + " (" + source_data["Liquid Type"] + ")",
-                    source_data["S/L Ratio"],
-                    label=source,
-                    alpha=0.7
-                )
-
-            ax.set_title("Mass/Volume Ratio Comparison")
-            ax.set_ylabel("S/L Ratio")
-            ax.set_xticklabels(
-                source_data["Phase"] + " (" + source_data["Liquid Type"] + ")",
-                rotation=45,
-                ha="right"
-            )
-            ax.legend(title="Source", bbox_to_anchor=(1.05, 1), loc="upper left")
-            st.pyplot(fig)
-
-
-        melted_df = pivot_df.melt(id_vars="Source", var_name="Phase & Liquid", value_name="S/L Ratio")
-
-        fig, ax = plt.subplots(figsize=(12, 6))
-        for phase_liquid in melted_df["Phase & Liquid"].unique():
-            phase_liquid_data = melted_df[melted_df["Phase & Liquid"] == phase_liquid]
-            ax.bar(
-                phase_liquid_data["Source"],
-                phase_liquid_data["S/L Ratio"],
-                label=phase_liquid,
-                alpha=0.7
-            )
-        ax.set_title("Mass/Volume Ratio Comparison")
-        ax.set_ylabel("S/L Ratio")
-        ax.set_xticklabels(pivot_df.index, rotation=45, ha="right")
-        ax.legend(title="Phase & Liquid", bbox_to_anchor=(1.05, 1), loc="upper left")
-        st.pyplot(fig)
-    else:
-        st.warning("No mass/volume ratio data available for comparison.")
+        
 
 
 if page == "Economic KPIs":
