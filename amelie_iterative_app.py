@@ -1663,14 +1663,16 @@ def benchmarking():
 
         # Identifica tutte le combinazioni uniche di fasi e liquidi per garantire uniformità
         unique_phases_liquids = mass_volume_df[["Phase", "Liquid Type"]].drop_duplicates()
-        st.write(mass_volume_df.head())
 
-        # Pivot per organizzare i dati
+        mass_volume_df["Source_Backup"] = mass_volume_df["Source"]
+
         pivot_df = mass_volume_df.pivot(
-            index="Source",
+            index="Source_Backup",
             columns=["Phase", "Liquid Type"],
             values="S/L Ratio"
-        ).reset_index().fillna(0)  # Riempie i valori mancanti con 0
+        ).reset_index().fillna(0)
+
+        pivot_df.rename(columns={"Source_Backup": "Source"}, inplace=True)
 
         st.write(pivot_df.head())  # Controlla la struttura di pivot_df
 
