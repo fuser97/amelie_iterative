@@ -1663,6 +1663,7 @@ def benchmarking():
 
         # Identifica tutte le combinazioni uniche di fasi e liquidi per garantire uniformità
         unique_phases_liquids = mass_volume_df[["Phase", "Liquid Type"]].drop_duplicates()
+        st.write(mass_volume_df.head())
 
         # Pivot per organizzare i dati
         pivot_df = mass_volume_df.pivot(
