@@ -1671,6 +1671,8 @@ def benchmarking():
             values="S/L Ratio"
         ).reset_index().fillna(0)  # Riempie i valori mancanti con 0
 
+        st.write(pivot_df.head())  # Controlla la struttura di pivot_df
+
         st.markdown("### Pivot Table for Mass/Volume Ratios")
         st.dataframe(pivot_df)
 
