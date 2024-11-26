@@ -1567,155 +1567,138 @@ def benchmarking():
         key="benchmarking_case_studies"
     )
 
-    # Unifica scenari e letteratura in un'unica lista
-    sources = []
-
-    # Aggiungi gli scenari
-    for scenario_name in selected_scenarios:
-        scenario_data = st.session_state.amelie_scenarios.get(scenario_name, {})
-        sources.append({
-            "name": scenario_name,
-            "type": "Scenario",
-            "data": scenario_data
-        })
-
-    # Aggiungi i casi di letteratura
-    for case_study_name in selected_case_studies:
-        case_study_data = st.session_state.case_studies.get(case_study_name, {})
-        sources.append({
-            "name": case_study_name,
-            "type": "Literature",
-            "data": case_study_data
-        })
-
-    # Aggregazione dei dati
-    all_data = []  # Per combinare KPI economici
-    material_efficiency_data = []  # Per efficienza per materiale
-    mass_volume_ratios = []  # Per rapporto massa/volume
-    missing_data = []  # Per fonti con dati mancanti
-
-    def process_source(source):
-        source_name = source["name"]
-        source_type = source["type"]
-        source_data = source["data"]
-
-        # Estrai i KPI economici
-        economic_kpis = source_data.get("economic_kpis", {})
-        capex = economic_kpis.get("capex", 0)
-        opex = economic_kpis.get("opex", 0)
-
-        # Aggiungi i KPI economici alla lista all_data
-        all_data.append({
-            "Source": f"{source_type}: {source_name}",
-            "CAPEX": capex,
-            "OPEX": opex,
-            "Total Cost": capex + opex
-        })
-
-        # Assicurati che i dati tecnici siano inizializzati
-        technical_kpis = source_data.get("technical_kpis", {})
-        phases = technical_kpis.get("phases", {})
-
-        # Processa l'efficienza dei materiali per ogni fase
-        for phase_name, phase_data in phases.items():
-            input_mass = phase_data.get("input_mass", 0)
-            output_mass = phase_data.get("output_mass", 0)
-            efficiency = (output_mass / input_mass * 100) if input_mass > 0 else 0
-
-            material_efficiency_data.append({
-                "Source": f"{source_type}: {source_name}",
-                "Phase": phase_name,
-                "Input Mass": input_mass,
-                "Output Mass": output_mass,
-                "Efficiency (%)": efficiency
-            })
-
-            # Recupera la massa totale per la fase
-            total_mass = phase_data.get("mass", 0)
-
-            # Recupera i dati sui liquidi
-            liquids = phase_data.get("liquids", [])
-            if not isinstance(liquids, list):
-                st.warning(f"Invalid data format for liquids in phase '{phase_name}' from source '{source_name}'.")
-                liquids = []
-
-            # Itera sui liquidi per calcolare il rapporto massa/volume
-            for liquid in liquids:
-                liquid_type = liquid.get("type", "Unknown")
-                liquid_volume = liquid.get("volume", 0)
-
-                # Calcolo del rapporto massa/volume
-                sl_ratio = total_mass / liquid_volume if liquid_volume > 0 else 0
-
-                # Aggiungi i dati raccolti
-                mass_volume_ratios.append({
-                    "Source": f"{source_type}: {source_name}",
-                    "Phase": phase_name,
-                    "Liquid Type": liquid_type,
-                    "Phase Mass (kg)": total_mass,
-                    "Liquid Volume (L)": liquid_volume,
-                    "S/L Ratio": sl_ratio,
-                })
-
-    # Processa tutte le fonti
-    for source in sources:
-        process_source(source)
-
-    # Creazione dei tab per la visualizzazione
+    # Creazione dei tab
     tab1, tab2, tab3 = st.tabs(["Economic KPIs", "Material Efficiency", "Mass/Volume Ratios"])
 
     with tab1:
         st.markdown("### Economic KPIs Comparison")
-        if all_data:
-            economic_df = pd.DataFrame(all_data)
-            st.dataframe(economic_df)
 
-            # Grafico a barre per i KPI economici
-            fig, ax = plt.subplots(figsize=(10, 6))
-            x = np.arange(len(economic_df))
-            width = 0.35
+        # Preparazione dei dati economici
+        economic_data = []
 
-            ax.bar(x - width / 2, economic_df["CAPEX"], width, label="CAPEX")
-            ax.bar(x + width / 2, economic_df["OPEX"], width, label="OPEX")
+        # Raccolta dati dagli scenari
+        for scenario_name in selected_scenarios:
+            scenario = st.session_state.amelie_scenarios[scenario_name]
+            if "economic_kpis" in scenario:
+                economic_data.append({
+                    "Source": f"Scenario: {scenario_name}",
+                    "CAPEX": scenario["economic_kpis"].get("capex", 0),
+                    "OPEX": scenario["economic_kpis"].get("opex", 0)
+                })
 
-            ax.set_ylabel("Cost")
-            ax.set_title("CAPEX vs OPEX Comparison")
-            ax.set_xticks(x)
-            ax.set_xticklabels(economic_df["Source"], rotation=45, ha="right")
-            ax.legend()
-            plt.tight_layout()
-            st.pyplot(fig)
+        # Raccolta dati dalla letteratura
+        for case_study_name in selected_case_studies:
+            case_study = st.session_state.case_studies[case_study_name]
+            if "economic_kpis" in case_study:
+                economic_data.append({
+                    "Source": f"Literature: {case_study_name}",
+                    "CAPEX": case_study["economic_kpis"].get("capex", 0),
+                    "OPEX": case_study["economic_kpis"].get("opex", 0)
+                })
+
+        if economic_data:
+            df_economic = pd.DataFrame(economic_data)
+
+            # Visualizzazione separata per CAPEX e OPEX
+            col1, col2 = st.columns(2)
+
+            with col1:
+                st.markdown("#### CAPEX Comparison")
+                fig_capex = plt.figure(figsize=(8, 6))
+                plt.bar(df_economic["Source"], df_economic["CAPEX"])
+                plt.xticks(rotation=45, ha='right')
+                plt.title("CAPEX Comparison")
+                plt.ylabel("CAPEX")
+                plt.tight_layout()
+                st.pyplot(fig_capex)
+
+            with col2:
+                st.markdown("#### OPEX Comparison")
+                fig_opex = plt.figure(figsize=(8, 6))
+                plt.bar(df_economic["Source"], df_economic["OPEX"])
+                plt.xticks(rotation=45, ha='right')
+                plt.title("OPEX Comparison")
+                plt.ylabel("OPEX")
+                plt.tight_layout()
+                st.pyplot(fig_opex)
+
+            # Mostra i dati in formato tabella
+            st.markdown("#### Economic Data Table")
+            st.dataframe(df_economic)
         else:
             st.warning("No economic data available for comparison.")
 
     with tab2:
         st.markdown("### Material Efficiency Comparison")
-        if material_efficiency_data:
-            efficiency_df = pd.DataFrame(material_efficiency_data)
-            st.dataframe(efficiency_df)
 
-            # Crea un pivot table per l'efficienza
+        # Preparazione dei dati di efficienza
+        efficiency_data = []
+
+        # Raccolta dati dagli scenari
+        for scenario_name in selected_scenarios:
+            scenario = st.session_state.amelie_scenarios[scenario_name]
+            if "technical_kpis" in scenario and "phases" in scenario["technical_kpis"]:
+                for phase_name, phase_data in scenario["technical_kpis"]["phases"].items():
+                    input_mass = phase_data.get("input_mass", 0)
+                    output_mass = phase_data.get("output_mass", 0)
+                    efficiency = (output_mass / input_mass * 100) if input_mass > 0 else 0
+
+                    efficiency_data.append({
+                        "Source": f"Scenario: {scenario_name}",
+                        "Phase": phase_name,
+                        "Input Mass": input_mass,
+                        "Output Mass": output_mass,
+                        "Efficiency (%)": efficiency
+                    })
+
+        # Raccolta dati dalla letteratura
+        for case_study_name in selected_case_studies:
+            case_study = st.session_state.case_studies[case_study_name]
+            if "technical_kpis" in case_study and "phases" in case_study["technical_kpis"]:
+                for phase_name, phase_data in case_study["technical_kpis"]["phases"].items():
+                    input_mass = phase_data.get("input_mass", 0)
+                    output_mass = phase_data.get("output_mass", 0)
+                    efficiency = (output_mass / input_mass * 100) if input_mass > 0 else 0
+
+                    efficiency_data.append({
+                        "Source": f"Literature: {case_study_name}",
+                        "Phase": phase_name,
+                        "Input Mass": input_mass,
+                        "Output Mass": output_mass,
+                        "Efficiency (%)": efficiency
+                    })
+
+        if efficiency_data:
+            df_efficiency = pd.DataFrame(efficiency_data)
+
+            # Crea pivot table per l'efficienza
             pivot_efficiency = pd.pivot_table(
-                efficiency_df,
+                df_efficiency,
                 values="Efficiency (%)",
                 index="Source",
                 columns="Phase",
                 fill_value=0
             )
 
-            # Grafico a barre per l'efficienza
-            fig, ax = plt.subplots(figsize=(10, 6))
-            pivot_efficiency.plot(kind="bar", ax=ax)
+            # Visualizzazione grafica dell'efficienza
+            st.markdown("#### Material Efficiency by Phase")
+            fig_efficiency = plt.figure(figsize=(10, 6))
+            pivot_efficiency.plot(kind="bar", ax=plt.gca())
             plt.title("Material Efficiency by Phase")
             plt.xlabel("Source")
             plt.ylabel("Efficiency (%)")
             plt.legend(title="Phase", bbox_to_anchor=(1.05, 1))
             plt.tight_layout()
-            st.pyplot(fig)
+            st.pyplot(fig_efficiency)
+
+            # Mostra i dati in formato tabella
+            st.markdown("#### Efficiency Data Table")
+            st.dataframe(df_efficiency)
         else:
             st.warning("No efficiency data available for comparison.")
 
     with tab3:
+        # [Il resto del tuo codice originale per mass/volume ratios rimane invariato]
         st.markdown("### Mass/Volume Ratios")
         if mass_volume_ratios:
             # Converte i dati in DataFrame per il confronto
