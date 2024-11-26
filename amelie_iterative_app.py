@@ -1649,7 +1649,6 @@ def benchmarking():
                 "S/L Ratio": overall_ratio,
             })
 
-    # Processa tutte le fonti
     for source in sources:
         process_source(source)
 
