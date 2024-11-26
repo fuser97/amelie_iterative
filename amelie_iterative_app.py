@@ -1666,8 +1666,12 @@ def benchmarking():
                 "S/L Ratio": overall_ratio,
             })
 
-    # Processa tutte le fonti
-    for source in sources:
+    # Processa i dati relativi al rapporto massa/volume
+    process_source(source)  # Usa la funzione pre-esistente
+
+        # Processa tutte le fonti
+    
+        for source in sources:
         process_source(source)
 
     # Visualizzazione dei dati di CapEx e OpEx
