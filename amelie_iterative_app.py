@@ -1664,21 +1664,12 @@ def benchmarking():
         # Identifica tutte le combinazioni uniche di fasi e liquidi per garantire uniformità
         unique_phases_liquids = mass_volume_df[["Phase", "Liquid Type"]].drop_duplicates()
 
-        mass_volume_df["Source_Backup"] = mass_volume_df["Source"]
-
+        # Pivot per organizzare i dati
         pivot_df = mass_volume_df.pivot(
+            index="Source",
             columns=["Phase", "Liquid Type"],
             values="S/L Ratio"
-        )
-
-        # Assicura che Source sia una colonna
-        pivot_df.reset_index(inplace=True)
-
-        # Verifica
-        st.write(pivot_df.head())
-
-        # Melt senza errori
-        melted_df = pivot_df.melt(id_vars="Source", var_name="Phase & Liquid", value_name="S/L Ratio")
+        ).fillna(0)  # Riempie i valori mancanti con 0
 
         st.markdown("### Pivot Table for Mass/Volume Ratios")
         st.dataframe(pivot_df)
@@ -1716,24 +1707,20 @@ def benchmarking():
         ax.legend(loc="upper right", bbox_to_anchor=(1.3, 1))
         st.pyplot(fig)
 
-    # Opzione 2: Grafico a Barre
-    st.markdown("#### Bar Chart for Mass/Volume Ratios")
+        # Opzione 2: Grafico a Barre
+        st.markdown("#### Bar Chart for Mass/Volume Ratios")
+        # Assicurati che "Source" sia una colonna e non un indice
+        if "Source" not in pivot_df.columns:
+            st.error("Column 'Source' not found in the DataFrame. Please check the pivot table.")
+        else:
+            pivot_df = pivot_df.reset_index()  # Assicura che "Source" sia una colonna
+            melted_df = pivot_df.melt(id_vars="Source", var_name="Phase & Liquid", value_name="S/L Ratio")
 
-    # Verifica che "Source" sia una colonna
-    if "Source" not in pivot_df.columns:
-        st.error("Column 'Source' not found in the DataFrame. Attempting to reset index...")
-        pivot_df.reset_index(inplace=True)
-        st.write("Reset index applied. Updated columns:", pivot_df.columns)  # Debug per confermare il reset
-
-    if "Source" in pivot_df.columns:
-        # Genera il DataFrame melt
+        pivot_df = pivot_df.reset_index()  # Rendi l'indice una colonna
         melted_df = pivot_df.melt(id_vars="Source", var_name="Phase & Liquid", value_name="S/L Ratio")
-        st.write(melted_df.head())  # Debug: Mostra i dati trasformati
 
-        # Genera il grafico a barre
         fig, ax = plt.subplots(figsize=(12, 6))
         for phase_liquid in melted_df["Phase & Liquid"].unique():
-            # Filtra i dati per ogni combinazione di Phase & Liquid
             phase_liquid_data = melted_df[melted_df["Phase & Liquid"] == phase_liquid]
             ax.bar(
                 phase_liquid_data["Source"],
@@ -1741,18 +1728,13 @@ def benchmarking():
                 label=phase_liquid,
                 alpha=0.7
             )
-
-        # Configura il grafico
         ax.set_title("Mass/Volume Ratio Comparison")
         ax.set_ylabel("S/L Ratio")
-        ax.set_xlabel("Source")
-        ax.set_xticks(
-            range(len(melted_df["Source"].unique())))  # Assicura che i tick siano posizionati correttamente
-        ax.set_xticklabels(melted_df["Source"].unique(), rotation=45, ha="right")
+        ax.set_xticklabels(pivot_df.index, rotation=45, ha="right")
         ax.legend(title="Phase & Liquid", bbox_to_anchor=(1.05, 1), loc="upper left")
         st.pyplot(fig)
     else:
-        st.warning("Unable to generate bar chart because 'Source' column is missing.")
+        st.warning("No mass/volume ratio data available for comparison.")
 
 
 if page == "Economic KPIs":
