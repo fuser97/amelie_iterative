@@ -1803,7 +1803,7 @@ def benchmarking():
     overall_table_df = pd.DataFrame(overall_table_data)
     st.table(overall_table_df)
 
-    
+
 
     # Grafico comparativo per le masse complessive
     st.markdown("#### Total Mass Comparison")
@@ -1910,52 +1910,29 @@ def benchmarking():
         # Identifica tutte le combinazioni uniche di fasi e liquidi per garantire uniformità
         unique_phases_liquids = mass_volume_df[["Phase", "Liquid Type"]].drop_duplicates()
 
-        st.markdown("### Table of Mass/Volume Ratios")
+        # Confronto migliorato per fase/liquido
+        st.markdown("### Enhanced Comparison of Mass/Volume Ratios")
 
-        # Organizza e mostra i dati in base alla fonte e alla fase
-        unique_sources = mass_volume_df["Source"].unique()
-        unique_phases = mass_volume_df["Phase"].unique()
+        if not phase_df.empty:
+            for phase_name in phase_df["Phase"].unique():
+                st.markdown(f"#### Phase: {phase_name}")
 
-        for source in unique_sources:
-            st.markdown(f"#### Source: {source}")
-            source_data = mass_volume_df[mass_volume_df["Source"] == source]
-            for phase in unique_phases:
-                phase_data = source_data[source_data["Phase"] == phase]
-                if not phase_data.empty:
-                    st.write(f"##### Phase: {phase}")
-                    st.table(phase_data[["Liquid Type", "Phase Mass (kg)", "Liquid Volume (L)", "S/L Ratio"]])
+                # Filtra i dati per la fase corrente
+                phase_specific_df = phase_df[phase_df["Phase"] == phase_name]
 
-        # Visualizzazione Grafica
-        st.markdown("### Graphical Representation of Mass/Volume Ratios")
+                # Crea una tabella pivot migliorata
+                pivot_data = phase_specific_df.pivot_table(
+                    index="Liquid Type",
+                    columns="Source",
+                    values=["Phase Mass (kg)", "Liquid Volume (L)", "S/L Ratio"],
+                    aggfunc="first"
+                )
 
-        # Stampa solo un grafico radar
-        st.markdown("### Radar Chart (Spider Plot) for Mass/Volume Ratios")
-        fig, ax = plt.subplots(figsize=(8, 8), subplot_kw=dict(polar=True))
+                # Migliora la leggibilità della tabella
+                pivot_data.columns = [' '.join(col).strip() for col in pivot_data.columns.values]
 
-        phases_liquids = mass_volume_df[["Phase", "Liquid Type"]].drop_duplicates().values.tolist()
-        num_vars = len(phases_liquids)
-        angles = np.linspace(0, 2 * np.pi, num_vars, endpoint=False).tolist()
-        angles += angles[:1]
-
-        for source in mass_volume_df["Source"].unique():
-            source_data = mass_volume_df[mass_volume_df["Source"] == source]
-            data = [
-                source_data[
-                    (source_data["Phase"] == phase) & (source_data["Liquid Type"] == liquid)
-                    ]["S/L Ratio"].sum()
-                for phase, liquid in phases_liquids
-            ]
-            data += data[:1]
-            ax.plot(angles, data, label=source, linewidth=2)
-            ax.fill(angles, data, alpha=0.25)
-
-        labels = [f"{phase}\n({liquid})" for phase, liquid in phases_liquids]
-        ax.set_xticks(angles[:-1])
-        ax.set_xticklabels(labels, fontsize=10)
-
-        ax.set_title("Mass/Volume Ratios by Phase and Liquid")
-        ax.legend(loc="upper right", bbox_to_anchor=(1.3, 1))
-        st.pyplot(fig)
+                # Mostra la tabella
+                st.table(pivot_data)
 
 
 if page == "Economic KPIs":
