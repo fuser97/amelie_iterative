@@ -1588,6 +1588,56 @@ def benchmarking():
             "data": case_study_data
         })
 
+    # Confronto dei KPI economici
+    st.markdown("### Economic KPI Comparison: CapEx and OpEx")
+
+    # Raccogli i dati per CapEx e OpEx
+    economic_data = []
+    for source in sources:
+        source_name = source["name"]
+        source_type = source["type"]
+        source_data = source["data"]
+
+        # Calcolo totale CapEx e OpEx
+        total_capex = sum(source_data.get("capex", {}).values())
+        total_opex = sum(source_data.get("opex", {}).values())
+
+        economic_data.append({
+            "Source": f"{source_type}: {source_name}",
+            "CapEx (EUR)": total_capex,
+            "OpEx (EUR)": total_opex
+        })
+
+    # Converti i dati in un DataFrame per la visualizzazione
+    economic_df = pd.DataFrame(economic_data)
+
+    # Visualizza i dati in tabella
+    st.markdown("#### CapEx and OpEx Comparison Table")
+    st.table(economic_df)
+
+    # Visualizza i dati con un grafico a barre
+    st.markdown("#### CapEx and OpEx Comparison Chart")
+    fig, ax = plt.subplots(figsize=(10, 6))
+    bar_width = 0.4
+    indices = np.arange(len(economic_df))
+
+    # Grafico per CapEx
+    capex_values = economic_df["CapEx (EUR)"]
+    ax.bar(indices, capex_values, bar_width, label="CapEx (EUR)")
+
+    # Grafico per OpEx
+    opex_values = economic_df["OpEx (EUR)"]
+    ax.bar(indices + bar_width, opex_values, bar_width, label="OpEx (EUR)")
+
+    # Configurazione del grafico
+    ax.set_xlabel("Sources")
+    ax.set_ylabel("Cost (EUR)")
+    ax.set_title("Economic KPI Comparison")
+    ax.set_xticks(indices + bar_width / 2)
+    ax.set_xticklabels(economic_df["Source"], rotation=45, ha="right")
+    ax.legend()
+    st.pyplot(fig)
+
     # Aggregazione dei dati
     all_data = []  # Per combinare KPI economici
     material_efficiency_data = []  # Per efficienza per materiale
