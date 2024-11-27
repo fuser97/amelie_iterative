@@ -1803,7 +1803,7 @@ def benchmarking():
     overall_table_df = pd.DataFrame(overall_table_data)
     st.table(overall_table_df)
 
-    
+
 
     # Grafico comparativo per le masse complessive
     st.markdown("#### Total Mass Comparison")
@@ -1899,31 +1899,45 @@ def benchmarking():
     for source in sources:
         process_source(source)
 
-    # Visualizzazione dei rapporti massa/volume
-    st.markdown("### Comparison of Mass/Volume Ratios")
+    # Confronto migliorato con scenari affiancati
+    st.markdown("### Compact Comparison of Mass/Volume Ratios")
 
-    if mass_volume_ratios:
-        # Converte i dati in DataFrame per il confronto
-        mass_volume_df = pd.DataFrame(mass_volume_ratios)
-        st.dataframe(mass_volume_df)
-
-        # Identifica tutte le combinazioni uniche di fasi e liquidi per garantire uniformità
-        unique_phases_liquids = mass_volume_df[["Phase", "Liquid Type"]].drop_duplicates()
-
-        st.markdown("### Table of Mass/Volume Ratios")
-
-        # Organizza e mostra i dati in base alla fonte e alla fase
-        unique_sources = mass_volume_df["Source"].unique()
+    if not mass_volume_df.empty:
+        # Raccogli tutte le combinazioni di fase e tipo di liquido
         unique_phases = mass_volume_df["Phase"].unique()
+        unique_liquids = mass_volume_df["Liquid Type"].unique()
 
-        for source in unique_sources:
-            st.markdown(f"#### Source: {source}")
-            source_data = mass_volume_df[mass_volume_df["Source"] == source]
-            for phase in unique_phases:
-                phase_data = source_data[source_data["Phase"] == phase]
-                if not phase_data.empty:
-                    st.write(f"##### Phase: {phase}")
-                    st.table(phase_data[["Liquid Type", "Phase Mass (kg)", "Liquid Volume (L)", "S/L Ratio"]])
+        # Itera sulle fasi per mostrare una tabella separata per ciascuna
+        for phase_name in unique_phases:
+            st.markdown(f"#### Phase: {phase_name}")
+
+            # Filtra i dati per la fase corrente
+            phase_specific_df = mass_volume_df[mass_volume_df["Phase"] == phase_name]
+
+            # Prepara i dati per la tabella compatta
+            table_data = {"Liquid Type": unique_liquids}
+            for source in mass_volume_df["Source"].unique():
+                source_data = phase_specific_df[phase_specific_df["Source"] == source]
+                for liquid_type in unique_liquids:
+                    liquid_row = source_data[source_data["Liquid Type"] == liquid_type]
+                    if not liquid_row.empty:
+                        table_data[f"{source} (Mass)"] = table_data.get(f"{source} (Mass)", []) + [
+                            liquid_row["Phase Mass (kg)"].values[0]]
+                        table_data[f"{source} (Volume)"] = table_data.get(f"{source} (Volume)", []) + [
+                            liquid_row["Liquid Volume (L)"].values[0]]
+                        table_data[f"{source} (S/L Ratio)"] = table_data.get(f"{source} (S/L Ratio)", []) + [
+                            liquid_row["S/L Ratio"].values[0]]
+                    else:
+                        # Valori vuoti per tipi di liquido non presenti
+                        table_data[f"{source} (Mass)"] = table_data.get(f"{source} (Mass)", []) + [None]
+                        table_data[f"{source} (Volume)"] = table_data.get(f"{source} (Volume)", []) + [None]
+                        table_data[f"{source} (S/L Ratio)"] = table_data.get(f"{source} (S/L Ratio)", []) + [None]
+
+            # Converte in DataFrame
+            compact_table_df = pd.DataFrame(table_data)
+
+            # Mostra la tabella compatta
+            st.table(compact_table_df)
 
         # Visualizzazione Grafica
         st.markdown("### Graphical Representation of Mass/Volume Ratios")
