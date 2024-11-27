@@ -1803,9 +1803,7 @@ def benchmarking():
     overall_table_df = pd.DataFrame(overall_table_data)
     st.table(overall_table_df)
 
-    # --- Confronto complessivo ---
-    st.markdown("#### Overall Solid/Liquid Ratios Table")
-    st.table(overall_df)
+    
 
     # Grafico comparativo per le masse complessive
     st.markdown("#### Total Mass Comparison")
