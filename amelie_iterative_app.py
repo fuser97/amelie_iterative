@@ -1681,24 +1681,14 @@ def benchmarking():
         # Visualizzazione Grafica
         st.markdown("### Graphical Representation of Mass/Volume Ratios")
 
-        # Opzione 1: Grafico a Ragnatela
-        st.markdown("#### Radar Chart (Spider Plot) for Phases and Liquids")
-        fig, ax = plt.subplots(figsize=(8, 8), subplot_kw=dict(polar=True))
-
-        # Preparazione degli angoli per il grafico radar
+        # Stampa solo un grafico radar
         st.markdown("### Radar Chart (Spider Plot) for Mass/Volume Ratios")
         fig, ax = plt.subplots(figsize=(8, 8), subplot_kw=dict(polar=True))
 
-        # Prepara un elenco unico di coppie fase/liquido
         phases_liquids = mass_volume_df[["Phase", "Liquid Type"]].drop_duplicates().values.tolist()
-
-        # Angoli per il grafico radar
         num_vars = len(phases_liquids)
         angles = np.linspace(0, 2 * np.pi, num_vars, endpoint=False).tolist()
-        angles += angles[:1]  # Chiudi il cerchio
-
-        # Traccia i dati per ogni fonte
-        fig, ax = plt.subplots(figsize=(8, 8), subplot_kw=dict(polar=True))
+        angles += angles[:1]
 
         for source in mass_volume_df["Source"].unique():
             source_data = mass_volume_df[mass_volume_df["Source"] == source]
@@ -1708,33 +1698,17 @@ def benchmarking():
                     ]["S/L Ratio"].sum()
                 for phase, liquid in phases_liquids
             ]
-            data += data[:1]  # Chiudi il cerchio
+            data += data[:1]
             ax.plot(angles, data, label=source, linewidth=2)
             ax.fill(angles, data, alpha=0.25)
 
-        # Etichette dei vertici
         labels = [f"{phase}\n({liquid})" for phase, liquid in phases_liquids]
         ax.set_xticks(angles[:-1])
         ax.set_xticklabels(labels, fontsize=10)
 
-        # Configura il grafico
         ax.set_title("Mass/Volume Ratios by Phase and Liquid")
         ax.legend(loc="upper right", bbox_to_anchor=(1.3, 1))
         st.pyplot(fig)
-
-        ax.set_yticks([])
-        ax.set_xticks(angles[:-1])
-        # Crea etichette leggibili per ogni combinazione fase/liquido
-        labels = [f"{phase}\n({liquid})" for phase, liquid in phases_liquids]
-
-        # Imposta le etichette sui vertici del grafico a ragnatela
-
-
-        ax.set_title("Mass/Volume Ratios by Phase and Liquid")
-        ax.legend(loc="upper right", bbox_to_anchor=(1.3, 1))
-        st.pyplot(fig)
-
-        
 
 
 if page == "Economic KPIs":
