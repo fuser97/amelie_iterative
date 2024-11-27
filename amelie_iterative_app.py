@@ -1763,19 +1763,45 @@ def benchmarking():
     phase_df = pd.DataFrame(phase_data)
     overall_df = pd.DataFrame(overall_data)
 
-    # --- Confronto per fase/liquido ---
-    st.markdown("#### Phase-Specific Solid/Liquid Ratios Table")
-    # Confronta per fase e tipo di liquido
+    # Confronto massa/volume per fase e liquido
+    st.markdown("### Improved Solid/Liquid Ratios Comparison")
+
     if not phase_df.empty:
         for phase_name in phase_df["Phase"].unique():
-            st.markdown(f"##### Phase: {phase_name}")
+            st.markdown(f"#### Phase: {phase_name}")
+
+            # Dati per la fase corrente
             phase_specific_df = phase_df[phase_df["Phase"] == phase_name]
-            st.table(phase_specific_df.pivot_table(
-                index=["Liquid Type"],
-                columns=["Source"],
-                values=["Mass (kg)", "Volume (L)", "S/L Ratio"],
-                aggfunc="first"
-            ))
+            liquids = phase_specific_df["Liquid Type"].unique()
+
+            # Crea una tabella organizzata
+            table_data = {"Metric": ["Mass (kg)", "Volume (L)", "S/L Ratio"]}
+
+            # Organizza i dati per liquido e fonte
+            for liquid in liquids:
+                liquid_data = phase_specific_df[phase_specific_df["Liquid Type"] == liquid]
+                for source in liquid_data["Source"].unique():
+                    source_data = liquid_data[liquid_data["Source"] == source]
+                    table_data[f"{liquid} ({source})"] = [
+                        source_data["Mass (kg)"].values[0],
+                        source_data["Volume (L)"].values[0],
+                        source_data["S/L Ratio"].values[0],
+                    ]
+
+            # Crea e mostra la tabella
+            table_df = pd.DataFrame(table_data)
+            st.table(table_df)
+
+    # Confronto complessivo
+    st.markdown("#### Overall Solid/Liquid Ratios Comparison")
+    overall_table_data = {
+        "Source": overall_df["Source"],
+        "Total Mass (kg)": overall_df["Total Mass (kg)"],
+        "Total Volume (L)": overall_df["Total Volume (L)"],
+        "Overall S/L Ratio": overall_df["Overall S/L Ratio"]
+    }
+    overall_table_df = pd.DataFrame(overall_table_data)
+    st.table(overall_table_df)
 
     # --- Confronto complessivo ---
     st.markdown("#### Overall Solid/Liquid Ratios Table")
