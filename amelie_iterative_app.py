@@ -1645,6 +1645,68 @@ def benchmarking():
     ax_opex.set_xticklabels(opex_df["Source"], rotation=45, ha="right")
     st.pyplot(fig_opex)
 
+    # Confronto delle efficienze (overall e per materiale)
+    st.markdown("### Efficiency Comparison: Overall and Per Material")
+
+    # Raccogli i dati per l'efficienza
+    efficiency_data = []
+    materials = set()  # Per raccogliere tutti i tipi di materiale unici
+
+    for source in sources:
+        source_name = source["name"]
+        source_type = source["type"]
+        source_data = source["data"]
+
+        # Recupera l'efficienza totale
+        overall_efficiency = source_data.get("technical_kpis", {}).get("efficiency", 0)
+
+        # Recupera le efficienze per materiale
+        material_efficiencies = source_data.get("technical_kpis", {}).get("composition", {})
+        recovered_masses = source_data.get("technical_kpis", {}).get("recovered_masses", {})
+        material_efficiency_data = {}
+
+        for material, percentage in material_efficiencies.items():
+            initial_mass = percentage / 100  # Percentuale in termini di frazione
+            recovered_mass = recovered_masses.get(material, 0)
+            efficiency = (recovered_mass / initial_mass) * 100 if initial_mass > 0 else 0
+            material_efficiency_data[material] = efficiency
+            materials.add(material)
+
+        # Aggiungi al dataset
+        efficiency_data.append({
+            "Source": f"{source_type}: {source_name}",
+            "Overall Efficiency (%)": overall_efficiency,
+            **material_efficiency_data
+        })
+
+    # Converti i dati in DataFrame per il confronto
+    efficiency_df = pd.DataFrame(efficiency_data).fillna(0)
+
+    # Visualizza la tabella per l'efficienza totale
+    st.markdown("#### Overall Efficiency Table")
+    st.table(efficiency_df[["Source", "Overall Efficiency (%)"]])
+
+    # Visualizza un grafico a barre per l'efficienza totale
+    st.markdown("#### Overall Efficiency Chart")
+    fig_overall, ax_overall = plt.subplots(figsize=(10, 6))
+    ax_overall.bar(efficiency_df["Source"], efficiency_df["Overall Efficiency (%)"], color="purple")
+    ax_overall.set_xlabel("Sources")
+    ax_overall.set_ylabel("Overall Efficiency (%)")
+    ax_overall.set_title("Overall Efficiency Comparison")
+    ax_overall.set_xticklabels(efficiency_df["Source"], rotation=45, ha="right")
+    st.pyplot(fig_overall)
+
+    # Visualizza i grafici a barre per i materiali
+    for material in sorted(materials):
+        st.markdown(f"#### Efficiency Comparison for {material}")
+        fig_material, ax_material = plt.subplots(figsize=(10, 6))
+        ax_material.bar(efficiency_df["Source"], efficiency_df.get(material, 0), color="orange")
+        ax_material.set_xlabel("Sources")
+        ax_material.set_ylabel(f"Efficiency for {material} (%)")
+        ax_material.set_title(f"{material} Efficiency Comparison")
+        ax_material.set_xticklabels(efficiency_df["Source"], rotation=45, ha="right")
+        st.pyplot(fig_material)
+
     # Aggregazione dei dati
     all_data = []  # Per combinare KPI economici
     material_efficiency_data = []  # Per efficienza per materiale
