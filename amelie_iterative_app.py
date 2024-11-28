@@ -172,7 +172,7 @@ def get_default_scenario():
             },
             "recovered_masses": {},
             "efficiency": 0.0,
-            "phases": {}
+            "phases": {},
             "total_black_mass": default_black_mass  # E lo aggiungiamo anche qui
         }
     }
