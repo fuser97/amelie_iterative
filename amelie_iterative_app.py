@@ -1881,26 +1881,119 @@ def benchmarking():
     if mass_volume_ratios:
         # Converte i dati in DataFrame per il confronto
         mass_volume_df = pd.DataFrame(mass_volume_ratios)
-        st.dataframe(mass_volume_df)
 
-        # Identifica tutte le combinazioni uniche di fasi e liquidi per garantire uniformità
-        unique_phases_liquids = mass_volume_df[["Phase", "Liquid Type"]].drop_duplicates()
+        # Definizione di una palette di colori per le fasi
+        phase_colors = {
+            'Solid': '#FFB6C1',  # Rosa chiaro
+            'Liquid': '#ADD8E6',  # Azzurro chiaro
+            'Gas': '#98FB98'  # Verde chiaro
+        }
 
-        st.markdown("### Table of Mass/Volume Ratios")
+        # Funzione per applicare lo stile alle celle
+        def highlight_phases(val):
+            if val in phase_colors:
+                return f'background-color: {phase_colors[val]}'
+            return ''
 
-        # Organizza e mostra i dati in base alla fonte e alla fase
+        # Calcolo dei totali per scenario
+        totals = mass_volume_df.groupby('Source').agg({
+            'Phase Mass (kg)': 'sum',
+            'Liquid Volume (L)': 'sum',
+            'S/L Ratio': 'mean'
+        }).round(2)
+
+        # Organizza i dati per fonte (scenario)
         unique_sources = mass_volume_df["Source"].unique()
-        unique_phases = mass_volume_df["Phase"].unique()
 
-        for source in unique_sources:
-            st.markdown(f"#### Source: {source}")
-            source_data = mass_volume_df[mass_volume_df["Source"] == source]
-            for phase in unique_phases:
-                phase_data = source_data[source_data["Phase"] == phase]
-                if not phase_data.empty:
-                    st.write(f"##### Phase: {phase}")
-                    st.table(phase_data[["Liquid Type", "Phase Mass (kg)", "Liquid Volume (L)", "S/L Ratio"]])
+        # Crea colonne per disporre le tabelle affiancate
+        cols = st.columns(len(unique_sources))
 
+        # Memorizza i dati per il confronto
+        scenario_data = {}
+
+        # Per ogni colonna (scenario)
+        for idx, source in enumerate(unique_sources):
+            with cols[idx]:
+                st.markdown(f"#### Source: {source}")
+
+                # Filtra i dati per lo scenario corrente
+                source_data = mass_volume_df[mass_volume_df["Source"] == source]
+
+                if not source_data.empty:
+                    # Ordina i dati per fase
+                    source_data_sorted = source_data.sort_values("Phase")
+
+                    # Applica lo stile con i colori
+                    styled_df = source_data_sorted.style.apply(
+                        lambda x: [highlight_phases(val) if col == "Phase" else ''
+                                   for col, val in x.items()], axis=1
+                    )
+
+                    # Aggiungi riga dei totali
+                    total_row = pd.DataFrame({
+                        'Phase': ['TOTAL'],
+                        'Liquid Type': [''],
+                        'Phase Mass (kg)': [source_data_sorted['Phase Mass (kg)'].sum()],
+                        'Liquid Volume (L)': [source_data_sorted['Liquid Volume (L)'].sum()],
+                        'S/L Ratio': [source_data_sorted['S/L Ratio'].mean()]
+                    })
+
+                    # Concatena i dati con i totali
+                    final_df = pd.concat([source_data_sorted, total_row])
+
+                    # Mostra la tabella
+                    st.table(final_df.style.apply(
+                        lambda x: [highlight_phases(val) if col == "Phase" else ''
+                                   for col, val in x.items()], axis=1
+                    ))
+
+                    # Memorizza i dati per il confronto
+                    scenario_data[source] = {
+                        'total_mass': source_data_sorted['Phase Mass (kg)'].sum(),
+                        'total_volume': source_data_sorted['Liquid Volume (L)'].sum(),
+                        'avg_ratio': source_data_sorted['S/L Ratio'].mean()
+                    }
+
+        # Confronto tra scenari
+        st.markdown("### Scenario Comparison")
+
+        if len(scenario_data) > 1:
+            comparison_cols = st.columns(1)
+            with comparison_cols[0]:
+                # Crea DataFrame per il confronto
+                comparison_data = []
+                base_scenario = list(scenario_data.keys())[0]
+
+                for scenario in scenario_data.keys():
+                    if scenario != base_scenario:
+                        diff_mass = ((scenario_data[scenario]['total_mass'] /
+                                      scenario_data[base_scenario]['total_mass'] - 1) * 100)
+                        diff_volume = ((scenario_data[scenario]['total_volume'] /
+                                        scenario_data[base_scenario]['total_volume'] - 1) * 100)
+                        diff_ratio = ((scenario_data[scenario]['avg_ratio'] /
+                                       scenario_data[base_scenario]['avg_ratio'] - 1) * 100)
+
+                        comparison_data.append({
+                            'Comparison': f'{scenario} vs {base_scenario}',
+                            'Mass Difference (%)': f"{diff_mass:.2f}%",
+                            'Volume Difference (%)': f"{diff_volume:.2f}%",
+                            'S/L Ratio Difference (%)': f"{diff_ratio:.2f}%"
+                        })
+
+                if comparison_data:
+                    comparison_df = pd.DataFrame(comparison_data)
+                    st.table(comparison_df)
+
+        # Aggiungi una legenda per i colori
+        st.markdown("### Legend")
+        legend_cols = st.columns(len(phase_colors))
+        for idx, (phase, color) in enumerate(phase_colors.items()):
+            with legend_cols[idx]:
+                st.markdown(
+                    f'<div style="background-color: {color}; padding: 10px; '
+                    f'border-radius: 5px; text-align: center;">{phase}</div>',
+                    unsafe_allow_html=True
+                )
         # Visualizzazione Grafica
         st.markdown("### Graphical Representation of Mass/Volume Ratios")
 
