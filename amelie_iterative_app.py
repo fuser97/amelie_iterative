@@ -1875,31 +1875,61 @@ def benchmarking():
     for source in sources:
         process_source(source)
 
-    # Visualizzazione dei rapporti massa/volume
-    st.markdown("### Comparison of Mass/Volume Ratios")
+    def visualize_mass_volume_ratios(mass_volume_ratios):
+        st.markdown("### Comparison of Mass/Volume Ratios")
 
-    if mass_volume_ratios:
-        # Converte i dati in DataFrame per il confronto
-        mass_volume_df = pd.DataFrame(mass_volume_ratios)
-        st.dataframe(mass_volume_df)
+        if mass_volume_ratios:
+            # Converte i dati in DataFrame per il confronto
+            mass_volume_df = pd.DataFrame(mass_volume_ratios)
 
-        # Identifica tutte le combinazioni uniche di fasi e liquidi per garantire uniformità
-        unique_phases_liquids = mass_volume_df[["Phase", "Liquid Type"]].drop_duplicates()
+            # Identifica tutte le combinazioni uniche di fasi e liquidi per garantire uniformità
+            unique_sources = mass_volume_df["Source"].unique()
+            unique_phases = mass_volume_df["Phase"].unique()
 
-        st.markdown("### Table of Mass/Volume Ratios")
+            st.markdown("### Table of Mass/Volume Ratios by Source")
 
-        # Organizza e mostra i dati in base alla fonte e alla fase
-        unique_sources = mass_volume_df["Source"].unique()
-        unique_phases = mass_volume_df["Phase"].unique()
+            # Crea una riga per ogni fonte
+            cols = st.columns(len(unique_sources))
+            for idx, source in enumerate(unique_sources):
+                with cols[idx]:
+                    st.markdown(f"#### Source: {source}")
+                    source_data = mass_volume_df[mass_volume_df["Source"] == source]
+                    for phase in unique_phases:
+                        phase_data = source_data[source_data["Phase"] == phase]
+                        if not phase_data.empty:
+                            st.markdown(f"##### Phase: {phase}")
+                            st.table(phase_data[["Liquid Type", "Phase Mass (kg)", "Liquid Volume (L)", "S/L Ratio"]])
 
-        for source in unique_sources:
-            st.markdown(f"#### Source: {source}")
-            source_data = mass_volume_df[mass_volume_df["Source"] == source]
-            for phase in unique_phases:
-                phase_data = source_data[source_data["Phase"] == phase]
-                if not phase_data.empty:
-                    st.write(f"##### Phase: {phase}")
-                    st.table(phase_data[["Liquid Type", "Phase Mass (kg)", "Liquid Volume (L)", "S/L Ratio"]])
+            # Grafico radar affiancato per ogni fonte
+            st.markdown("### Graphical Comparison of Mass/Volume Ratios")
+            cols = st.columns(len(unique_sources))
+            for idx, source in enumerate(unique_sources):
+                with cols[idx]:
+                    source_data = mass_volume_df[mass_volume_df["Source"] == source]
+                    st.markdown(f"#### Radar Chart for Source: {source}")
+                    fig, ax = plt.subplots(figsize=(6, 6), subplot_kw=dict(polar=True))
+
+                    phases_liquids = source_data[["Phase", "Liquid Type"]].drop_duplicates().values.tolist()
+                    num_vars = len(phases_liquids)
+                    angles = np.linspace(0, 2 * np.pi, num_vars, endpoint=False).tolist()
+                    angles += angles[:1]
+
+                    data = [
+                        source_data[
+                            (source_data["Phase"] == phase) & (source_data["Liquid Type"] == liquid)
+                            ]["S/L Ratio"].sum()
+                        for phase, liquid in phases_liquids
+                    ]
+                    data += data[:1]
+                    ax.plot(angles, data, label=source, linewidth=2)
+                    ax.fill(angles, data, alpha=0.25)
+
+                    labels = [f"{phase}\n({liquid})" for phase, liquid in phases_liquids]
+                    ax.set_xticks(angles[:-1])
+                    ax.set_xticklabels(labels, fontsize=8)
+
+                    ax.set_title(f"Mass/Volume Ratios for {source}")
+                    st.pyplot(fig)
 
         # Visualizzazione Grafica
         st.markdown("### Graphical Representation of Mass/Volume Ratios")
