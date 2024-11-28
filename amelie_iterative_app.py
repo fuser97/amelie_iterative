@@ -1981,16 +1981,7 @@ def benchmarking():
                     comparison_df = pd.DataFrame(comparison_data)
                     st.table(comparison_df)
 
-        # Aggiungi una legenda per i colori
-        st.markdown("### Legend")
-        legend_cols = st.columns(len(phase_colors))
-        for idx, (phase, color) in enumerate(phase_colors.items()):
-            with legend_cols[idx]:
-                st.markdown(
-                    f'<div style="background-color: {color}; padding: 10px; '
-                    f'border-radius: 5px; text-align: center;">{phase}</div>',
-                    unsafe_allow_html=True
-                )
+
         # Visualizzazione Grafica
         st.markdown("### Graphical Representation of Mass/Volume Ratios")
 
