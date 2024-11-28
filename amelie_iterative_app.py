@@ -1889,19 +1889,6 @@ def benchmarking():
             'Gas': '#98FB98'  # Verde chiaro
         }
 
-        # Funzione per applicare lo stile alle celle
-        def highlight_phases(val):
-            if val in phase_colors:
-                return f'background-color: {phase_colors[val]}'
-            return ''
-
-        # Calcolo dei totali per scenario
-        totals = mass_volume_df.groupby('Source').agg({
-            'Phase Mass (kg)': 'sum',
-            'Liquid Volume (L)': 'sum',
-            'S/L Ratio': 'mean'
-        }).round(2)
-
         # Organizza i dati per fonte (scenario)
         unique_sources = mass_volume_df["Source"].unique()
 
@@ -1923,12 +1910,6 @@ def benchmarking():
                     # Ordina i dati per fase
                     source_data_sorted = source_data.sort_values("Phase")
 
-                    # Applica lo stile con i colori
-                    styled_df = source_data_sorted.style.apply(
-                        lambda x: [highlight_phases(val) if col == "Phase" else ''
-                                   for col, val in x.items()], axis=1
-                    )
-
                     # Aggiungi riga dei totali
                     total_row = pd.DataFrame({
                         'Phase': ['TOTAL'],
@@ -1941,11 +1922,32 @@ def benchmarking():
                     # Concatena i dati con i totali
                     final_df = pd.concat([source_data_sorted, total_row])
 
-                    # Mostra la tabella
-                    st.table(final_df.style.apply(
-                        lambda x: [highlight_phases(val) if col == "Phase" else ''
-                                   for col, val in x.items()], axis=1
-                    ))
+                    # Applica colori di sfondo usando HTML
+                    def color_phase(df):
+                        colored_rows = []
+                        for _, row in df.iterrows():
+                            phase = row['Phase']
+                            color = phase_colors.get(phase, '#FFFFFF')  # bianco per default
+                            colored_row = f'<tr style="background-color: {color}">'
+                            for col in df.columns:
+                                colored_row += f'<td>{row[col]}</td>'
+                            colored_row += '</tr>'
+                            colored_rows.append(colored_row)
+
+                        table_html = f'''
+                        <table>
+                            <thead>
+                                <tr>{"".join(f"<th>{col}</th>" for col in df.columns)}</tr>
+                            </thead>
+                            <tbody>
+                                {"".join(colored_rows)}
+                            </tbody>
+                        </table>
+                        '''
+                        return table_html
+
+                    # Mostra la tabella con HTML
+                    st.markdown(color_phase(final_df), unsafe_allow_html=True)
 
                     # Memorizza i dati per il confronto
                     scenario_data[source] = {
