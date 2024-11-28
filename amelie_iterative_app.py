@@ -282,7 +282,7 @@ def economic_kpis():
     # Verifica se il selected_scenario è valido
     if selected_scenario == "Create New Scenario":
         st.warning("Please create a new scenario before proceeding.")
-        return  # Ferma l'esecuzione della funzione
+        return
 
     # Recupera lo scenario selezionato o usa il default
     if selected_scenario not in st.session_state.amelie_scenarios:
@@ -327,38 +327,48 @@ def economic_kpis():
     # General Assumptions Section
     if selected_section == "General Assumptions":
         st.subheader("General Assumptions")
-        if "assumptions" not in st.session_state:
-            st.session_state.assumptions = [
-                "Batch Size (10 kg)",
-                "1 Operator per Batch",
-                "Process Includes: Pre-treatment, microwave thermal treatment, leaching in water, precipitation, secondary drying, leaching in acid, and wastewater treatment"
-            ]
 
-        # Display assumptions
+        # Usa le assumptions dallo scenario corrente invece che da st.session_state
         assumptions_to_delete = []
-        for idx, assumption in enumerate(st.session_state.assumptions):
+        for idx, assumption in enumerate(current_scenario["assumptions"]):
             col1, col2 = st.columns([4, 1])
             with col1:
-                st.text_input(f"Edit Assumption {idx + 1}:", value=assumption, key=f"assumption_{idx}")
+                new_assumption = st.text_input(
+                    f"Edit Assumption {idx + 1}:",
+                    value=assumption,
+                    key=f"assumption_{selected_scenario}_{idx}"
+                )
+                current_scenario["assumptions"][idx] = new_assumption
             with col2:
-                if st.button("Remove", key=f"remove_assumption_{idx}"):
+                if st.button("Remove", key=f"remove_assumption_{selected_scenario}_{idx}"):
                     assumptions_to_delete.append(idx)
 
+        # Rimuovi le assumptions marcate per l'eliminazione
         for idx in sorted(assumptions_to_delete, reverse=True):
-            st.session_state.assumptions.pop(idx)
+            current_scenario["assumptions"].pop(idx)
 
-        # Add new assumption
-        new_assumption = st.text_input("New Assumption:", key="new_assumption")
-        if st.button("Add Assumption", key="add_assumption"):
+        # Aggiungi nuova assumption
+        new_assumption = st.text_input(
+            "New Assumption:",
+            key=f"new_assumption_{selected_scenario}"
+        )
+        if st.button("Add Assumption", key=f"add_assumption_{selected_scenario}"):
             if new_assumption:
-                st.session_state.assumptions.append(new_assumption)
+                current_scenario["assumptions"].append(new_assumption)
                 st.success(f"Added new assumption: {new_assumption}")
             else:
                 st.error("Assumption cannot be empty!")
 
         st.markdown("### Current Assumptions")
-        for idx, assumption in enumerate(st.session_state.assumptions, 1):
+        for idx, assumption in enumerate(current_scenario["assumptions"], 1):
             st.write(f"{idx}. {assumption}")
+
+        # Salva le modifiche nello scenario
+        st.session_state.amelie_scenarios[selected_scenario] = current_scenario
+
+        # Persisti i dati su disco
+        save_amelie_scenarios()
+        st.success("Assumptions saved successfully!")
 
     elif selected_section == "CapEx Configuration":
         st.subheader("CapEx Configuration")
