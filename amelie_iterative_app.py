@@ -55,6 +55,14 @@ if "case_studies" not in st.session_state:
         st.session_state.case_studies = {}
 
 
+def get_black_mass(scenario_name):
+    """Recupera il valore di black_mass dallo scenario selezionato."""
+    return st.session_state.amelie_scenarios[scenario_name].get("black_mass", 10)
+
+def set_black_mass(scenario_name, value):
+    """Aggiorna il valore di black_mass nello scenario e lo salva."""
+    st.session_state.amelie_scenarios[scenario_name]["black_mass"] = value
+    save_amelie_scenarios()
 
 class AmelieEconomicModel:
     def __init__(self):
@@ -157,6 +165,7 @@ def get_default_scenario():
             "Solvent Extraction Unit": 6,
             "Microwave Thermal Treatment": 2.5
         },
+        "black_mass": 10,  # Valore di default
         "assumptions": [
             "Batch Size (10 kg)",
             "1 Operator per Batch",
@@ -325,6 +334,23 @@ def economic_kpis():
     # General Assumptions Section
     if selected_section == "General Assumptions":
         st.subheader("General Assumptions")
+
+        # Carica il valore corrente di black_mass per lo scenario
+        total_black_mass = get_black_mass(selected_scenario)
+
+        # Input per modificare black_mass
+        new_black_mass = st.number_input(
+            "Total Black Mass (kg):",
+            value=total_black_mass,
+            min_value=0.1,
+            step=0.1,
+            key=f"black_mass_{selected_scenario}"
+        )
+
+        # Aggiorna e salva se il valore è cambiato
+        if new_black_mass != total_black_mass:
+            set_black_mass(selected_scenario, new_black_mass)
+
         if "assumptions" not in st.session_state:
             st.session_state.assumptions = [
                 "Batch Size (10 kg)",
@@ -710,10 +736,25 @@ def technical_kpis():
 
     # Resto del codice della funzione...
 
-
     # Sezione "Material Composition & Efficiency"
     if selected_section == "Material Composition & Efficiency":
         st.subheader("Material Composition & Efficiency")
+
+        # Usa il valore di black_mass dallo scenario
+        current_scenario["black_mass"] = st.number_input(
+            "Total Black Mass (kg):",
+            min_value=0.1,  # Valore minimo per evitare input non validi
+            value=current_scenario.get("black_mass", 10),
+            step=0.1,
+            key=f"black_mass_{selected_scenario}"
+        )
+
+        # Salva automaticamente il valore aggiornato
+        st.session_state.amelie_scenarios[selected_scenario] = current_scenario
+        save_amelie_scenarios()
+
+        # Utilizza il valore di black_mass per i calcoli
+        total_black_mass
         composition = current_scenario["technical_kpis"].get("composition", {})
         recovered_masses = current_scenario["technical_kpis"].get("recovered_masses", {})
 
@@ -771,14 +812,12 @@ def technical_kpis():
             st.info(f"Total material composition is below 100% ({total_percentage:.2f}%).")
 
         # Calcolo Efficienza complessiva
-        total_black_mass = st.number_input(
-            "Total Black Mass (kg):", min_value=0.1, value=10.0,
-            key=f"total_black_mass_{selected_scenario}"
-        )
         efficiencies = {}
         total_recovered_mass = 0.0
 
         for material, percentage in updated_composition.items():
+            # Recupera il valore di black_mass
+            total_black_mass = get_black_mass(selected_scenario)
             initial_mass = total_black_mass * (percentage / 100)
             recovered_mass = recovered_masses.get(material, 0.0)
             efficiency = (recovered_mass / initial_mass) * 100 if initial_mass > 0 else 0.0
@@ -812,6 +851,10 @@ def technical_kpis():
     # Solid/Liquid Ratios Section
     elif selected_section == "Solid/Liquid Ratios":
         st.subheader("Solid/Liquid Ratios for Each Phase")
+        # Usa il valore di black_mass per calcoli specifici
+        total_black_mass
+
+        st.write(f"**Total Black Mass (kg):** {total_black_mass}")
 
         if "phases" not in st.session_state:
             st.session_state.phases = {
@@ -1278,8 +1321,7 @@ def literature():
                     st.info(f"Total material composition is below 100% ({total_percentage:.2f}%).")
 
                 st.subheader("Efficiency Calculation")
-                total_black_mass = st.number_input("Total Black Mass (kg):", min_value=0.1, value=10.0,
-                                                   key=f"total_black_mass_{case_study_name}")
+                total_black_mass
                 recovered_masses = technical_kpis.get("recovered_masses", {})
                 efficiencies = {}
                 total_recovered_mass = 0
