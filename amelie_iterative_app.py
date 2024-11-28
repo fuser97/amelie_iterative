@@ -729,7 +729,7 @@ def technical_kpis():
     if selected_section == "Material Composition & Efficiency":
         st.subheader("Material Composition & Efficiency")
 
-        # Input per Total Black Mass
+        # Input per Total Black Mass (SOLO UNA VOLTA)
         total_black_mass = st.number_input(
             "Total Black Mass (kg):",
             min_value=0.1,
@@ -803,21 +803,9 @@ def technical_kpis():
 
         # Calcolo Efficienza complessiva
             # Modifica la parte del total_black_mass per usare il valore salvato
-        total_black_mass = st.number_input(
-            "Total Black Mass (kg):",
-            min_value=0.1,
-            value=current_scenario["technical_kpis"].get("total_black_mass", 10.0),
-            key=f"total_black_mass_{selected_scenario}"
-        )
 
-        # Aggiorna sia il valore tecnico che le assumptions
-        current_scenario["technical_kpis"]["total_black_mass"] = total_black_mass
 
-        # Aggiorna l'assumption relativa al Batch Size
-        for i, assumption in enumerate(current_scenario["assumptions"]):
-            if assumption.startswith("Batch Size"):
-                current_scenario["assumptions"][i] = f"Batch Size ({total_black_mass} kg)"
-                break
+
         efficiencies = {}
         total_recovered_mass = 0.0
 
