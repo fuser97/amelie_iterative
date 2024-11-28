@@ -146,6 +146,7 @@ def get_default_opex():
     }
 
 def get_default_scenario():
+    default_black_mass = 10.0  # Definiamo un valore di default una volta sola
     return {
         "capex": get_default_capex(),
         "opex": get_default_opex(),
@@ -172,6 +173,7 @@ def get_default_scenario():
             "recovered_masses": {},
             "efficiency": 0.0,
             "phases": {}
+            "total_black_mass": default_black_mass  # E lo aggiungiamo anche qui
         }
     }
 
@@ -777,9 +779,18 @@ def technical_kpis():
         total_black_mass = st.number_input(
             "Total Black Mass (kg):",
             min_value=0.1,
-            value=current_scenario["technical_kpis"].get("total_black_mass", 10.0),  # Usa il valore salvato
+            value=current_scenario["technical_kpis"].get("total_black_mass", 10.0),
             key=f"total_black_mass_{selected_scenario}"
         )
+
+        # Aggiorna sia il valore tecnico che le assumptions
+        current_scenario["technical_kpis"]["total_black_mass"] = total_black_mass
+
+        # Aggiorna l'assumption relativa al Batch Size
+        for i, assumption in enumerate(current_scenario["assumptions"]):
+            if assumption.startswith("Batch Size"):
+                current_scenario["assumptions"][i] = f"Batch Size ({total_black_mass} kg)"
+                break
         efficiencies = {}
         total_recovered_mass = 0.0
 
