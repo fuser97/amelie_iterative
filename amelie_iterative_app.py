@@ -1882,39 +1882,6 @@ def benchmarking():
         # Converte i dati in DataFrame per il confronto
         mass_volume_df = pd.DataFrame(mass_volume_ratios)
 
-        # Aggiungi CSS personalizzato per la tabella
-        st.markdown("""
-            <style>
-            .dataframe {
-                background-color: #0e1117 !important;
-                color: white !important;
-            }
-            .dataframe th {
-                background-color: #262730 !important;
-                color: white !important;
-            }
-            .dataframe td {
-                background-color: #0e1117 !important;
-                color: white !important;
-            }
-            </style>
-        """, unsafe_allow_html=True)
-
-        # Mostra il DataFrame con lo stile aggiornato
-        st.dataframe(mass_volume_df, use_container_width=True)
-
-        
-
-        # Usa st.table invece di st.dataframe per mantenere lo stile coerente con Streamlit
-        st.table(mass_volume_df)
-
-                # Definizione di una palette di colori per le fasi
-        phase_colors = {
-            'Solid': '#FFB6C1',  # Rosa chiaro
-            'Liquid': '#ADD8E6',  # Azzurro chiaro
-            'Gas': '#98FB98'  # Verde chiaro
-        }
-
         # Organizza i dati per fonte (scenario)
         unique_sources = mass_volume_df["Source"].unique()
 
@@ -1927,7 +1894,7 @@ def benchmarking():
         # Per ogni colonna (scenario)
         for idx, source in enumerate(unique_sources):
             with cols[idx]:
-                st.markdown(f"#### Source: {source}")
+                st.markdown(f"#### {source}")
 
                 # Filtra i dati per lo scenario corrente
                 source_data = mass_volume_df[mass_volume_df["Source"] == source]
@@ -1948,32 +1915,8 @@ def benchmarking():
                     # Concatena i dati con i totali
                     final_df = pd.concat([source_data_sorted, total_row])
 
-                    # Applica colori di sfondo usando HTML
-                    def color_phase(df):
-                        colored_rows = []
-                        for _, row in df.iterrows():
-                            phase = row['Phase']
-                            color = phase_colors.get(phase, '#FFFFFF')  # bianco per default
-                            colored_row = f'<tr style="background-color: {color}">'
-                            for col in df.columns:
-                                colored_row += f'<td>{row[col]}</td>'
-                            colored_row += '</tr>'
-                            colored_rows.append(colored_row)
-
-                        table_html = f'''
-                        <table>
-                            <thead>
-                                <tr>{"".join(f"<th>{col}</th>" for col in df.columns)}</tr>
-                            </thead>
-                            <tbody>
-                                {"".join(colored_rows)}
-                            </tbody>
-                        </table>
-                        '''
-                        return table_html
-
-                    # Mostra la tabella con HTML
-                    st.markdown(color_phase(final_df), unsafe_allow_html=True)
+                    # Mostra la tabella usando st.table
+                    st.table(final_df)
 
                     # Memorizza i dati per il confronto
                     scenario_data[source] = {
@@ -1981,6 +1924,32 @@ def benchmarking():
                         'total_volume': source_data_sorted['Liquid Volume (L)'].sum(),
                         'avg_ratio': source_data_sorted['S/L Ratio'].mean()
                     }
+
+        # Confronto tra scenari
+        if len(scenario_data) > 1:
+            st.markdown("### Scenario Comparison")
+            comparison_data = []
+            base_scenario = list(scenario_data.keys())[0]
+
+            for scenario in scenario_data.keys():
+                if scenario != base_scenario:
+                    diff_mass = ((scenario_data[scenario]['total_mass'] /
+                                  scenario_data[base_scenario]['total_mass'] - 1) * 100)
+                    diff_volume = ((scenario_data[scenario]['total_volume'] /
+                                    scenario_data[base_scenario]['total_volume'] - 1) * 100)
+                    diff_ratio = ((scenario_data[scenario]['avg_ratio'] /
+                                   scenario_data[base_scenario]['avg_ratio'] - 1) * 100)
+
+                    comparison_data.append({
+                        'Comparison': f'{scenario} vs {base_scenario}',
+                        'Mass Difference (%)': f"{diff_mass:.2f}%",
+                        'Volume Difference (%)': f"{diff_volume:.2f}%",
+                        'S/L Ratio Difference (%)': f"{diff_ratio:.2f}%"
+                    })
+
+            if comparison_data:
+                comparison_df = pd.DataFrame(comparison_data)
+                st.table(comparison_df)
 
         # Confronto tra scenari
         st.markdown("### Scenario Comparison")
