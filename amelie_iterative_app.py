@@ -11,6 +11,22 @@ import os
 import numpy as np
 
 
+def update_black_mass_value(scenario, new_mass):
+    """
+    Aggiorna il valore della black mass in tutti i punti necessari dello scenario
+    """
+    # Aggiorna nei technical KPIs
+    if "technical_kpis" not in scenario:
+        scenario["technical_kpis"] = {}
+    scenario["technical_kpis"]["total_black_mass"] = new_mass
+
+    # Aggiorna nelle assumptions
+    for i, assumption in enumerate(scenario["assumptions"]):
+        if assumption.startswith("Batch Size"):
+            scenario["assumptions"][i] = f"Batch Size ({new_mass} kg)"
+            break
+
+    return scenario
 # Path to the JSON file
 data_dir = "data"
 if not os.path.exists(data_dir):
@@ -338,10 +354,18 @@ def economic_kpis():
                     value=assumption,
                     key=f"assumption_{selected_scenario}_{idx}"
                 )
-                current_scenario["assumptions"][idx] = new_assumption
-            with col2:
-                if st.button("Remove", key=f"remove_assumption_{selected_scenario}_{idx}"):
-                    assumptions_to_delete.append(idx)
+
+                if assumption.startswith("Batch Size") and new_assumption.startswith("Batch Size"):
+                    try:
+                        mass_str = new_assumption.split("(")[1].split("kg")[0].strip()
+                        new_mass = float(mass_str)
+                        current_scenario = update_black_mass_value(current_scenario, new_mass)
+                        st.success(f"Updated Black Mass value to {new_mass} kg")
+                    except Exception as e:
+                        st.warning("Invalid Batch Size format. Use: Batch Size (X kg)")
+                        current_scenario["assumptions"][idx] = assumption
+                else:
+                    current_scenario["assumptions"][idx] = new_assumption
 
         # Rimuovi le assumptions marcate per l'eliminazione
         for idx in sorted(assumptions_to_delete, reverse=True):
