@@ -1878,16 +1878,17 @@ def benchmarking():
     # Visualizzazione dei rapporti massa/volume
     st.markdown("### Comparison of Mass/Volume Ratios")
 
+    # Visualizzazione dei rapporti massa/volume
+    st.markdown("### Comparison of Mass/Volume Ratios")
+
     if mass_volume_ratios:
         # Converte i dati in DataFrame per il confronto
         mass_volume_df = pd.DataFrame(mass_volume_ratios)
 
-        # Definizione di una palette di colori per le fasi
-        phase_colors = {
-            'Solid': '#FFB6C1',  # Rosa chiaro
-            'Liquid': '#ADD8E6',  # Azzurro chiaro
-            'Gas': '#98FB98'  # Verde chiaro
-        }
+        # Usa st.table invece di st.dataframe per mantenere lo stile coerente con Streamlit
+        st.table(mass_volume_df)
+
+
 
         # Organizza i dati per fonte (scenario)
         unique_sources = mass_volume_df["Source"].unique()
@@ -1946,8 +1947,7 @@ def benchmarking():
                         '''
                         return table_html
 
-                    # Mostra la tabella con HTML
-                    st.markdown(color_phase(final_df), unsafe_allow_html=True)
+                    
 
                     # Memorizza i dati per il confronto
                     scenario_data[source] = {
