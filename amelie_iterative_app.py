@@ -696,7 +696,9 @@ def technical_kpis():
             },
             "recovered_masses": {},
             "efficiency": 0.0,
-            "phases": {}  # Per la sezione Solid/Liquid Ratios
+            "phases": {},  # Per la sezione Solid/Liquid Ratios
+            "total_black_mass": 10.0  # Aggiungi questo valore di default
+
         }
 
     # Verifica e imposta valori di default per la composizione
@@ -708,7 +710,7 @@ def technical_kpis():
             "Mn": 8.0
         }
 
-    # Resto del codice della funzione...
+
 
 
     # Sezione "Material Composition & Efficiency"
@@ -771,8 +773,11 @@ def technical_kpis():
             st.info(f"Total material composition is below 100% ({total_percentage:.2f}%).")
 
         # Calcolo Efficienza complessiva
+            # Modifica la parte del total_black_mass per usare il valore salvato
         total_black_mass = st.number_input(
-            "Total Black Mass (kg):", min_value=0.1, value=10.0,
+            "Total Black Mass (kg):",
+            min_value=0.1,
+            value=current_scenario["technical_kpis"].get("total_black_mass", 10.0),  # Usa il valore salvato
             key=f"total_black_mass_{selected_scenario}"
         )
         efficiencies = {}
@@ -801,6 +806,7 @@ def technical_kpis():
         current_scenario["technical_kpis"]["composition"] = updated_composition
         current_scenario["technical_kpis"]["recovered_masses"] = recovered_masses
         current_scenario["technical_kpis"]["efficiency"] = overall_efficiency
+        current_scenario["technical_kpis"]["total_black_mass"] = total_black_mass  # Aggiungi questa riga
 
         # Aggiorna lo stato della sessione
         st.session_state.amelie_scenarios[selected_scenario] = current_scenario
