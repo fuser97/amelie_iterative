@@ -10,8 +10,6 @@ import json
 import os
 import numpy as np
 
-if "black_mass" not in st.session_state:
-    st.session_state.black_mass = 10  # Valore predefinito
 
 # Path to the JSON file
 data_dir = "data"
@@ -290,25 +288,7 @@ def economic_kpis():
 
     # Recupera i dati dello scenario corrente
     current_scenario = st.session_state.amelie_scenarios[selected_scenario]
-    st.session_state.black_mass = current_scenario.get("black_mass", 10)  # Default a 10 se non salvato
 
-    # Carica il valore di `black_mass` dallo scenario o usa il valore predefinito
-    if "black_mass" not in current_scenario:
-        current_scenario["black_mass"] = st.session_state.black_mass  # Inizializza se mancante
-
-    # Sincronizza il valore di `black_mass` con l'input utente
-    st.session_state.black_mass = st.number_input(
-        "Black Mass (kg):",
-        value=st.session_state.black_mass,   # Carica il valore dello scenario
-        min_value=0.0,
-        step=0.1,
-        key="black_mass_input"
-    )
-
-    # Aggiorna lo scenario con il valore modificato
-    current_scenario["black_mass"] = st.session_state.black_mass
-    # Aggiorna il modello con il valore corrente di `black_mass`
-    model.black_mass = st.session_state.black_mass
     # Assicurati che lo scenario abbia tutti i valori di default
     default_scenario = get_default_scenario()
     for key, default_value in default_scenario.items():
@@ -943,18 +923,11 @@ def save_case_studies():
 
 def save_amelie_scenarios():
     try:
-        # Salva il valore di `black_mass` nello scenario selezionato
-        st.session_state.amelie_scenarios[selected_scenario]["black_mass"] = st.session_state.black_mass
-
-        # Salva tutti gli scenari nel file
         with open(amelie_scenarios_file, "w") as file:
             json.dump(st.session_state.amelie_scenarios, file, indent=4)
-
         st.success("Amelie scenarios saved successfully.")
     except Exception as e:
         st.error(f"Failed to save Amelie scenarios: {e}")
-
-
 
 
 
