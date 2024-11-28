@@ -1886,11 +1886,11 @@ def benchmarking():
         # Identifica tutte le combinazioni uniche di fasi e liquidi per garantire uniformità
         unique_phases_liquids = mass_volume_df[["Phase", "Liquid Type"]].drop_duplicates()
 
-        """st.markdown("### Table of Mass/Volume Ratios")
+        st.markdown("### Table of Mass/Volume Ratios")
 
         # Organizza e mostra i dati in base alla fonte e alla fase
         unique_sources = mass_volume_df["Source"].unique()
-        unique_phases = mass_volume_df["Phase"].unique()"""
+        unique_phases = mass_volume_df["Phase"].unique()
 
         for source in unique_sources:
             st.markdown(f"#### Source: {source}")
